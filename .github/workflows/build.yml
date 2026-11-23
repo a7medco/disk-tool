@@ -54,20 +54,36 @@ jobs:
           [print(x['Number'],x['FriendlyName'],x['Bus'],'ext=',x['IsExternal'],'unalloc=',x['Unallocated'],'vols=',len(x['Volumes'] or [])) for x in d];
           assert d and 'Bus' in d[0] and 'Volumes' in d[0]"
 
-      - name: Build exe
+      - name: Build exe - fast folder version
         run: >
           python -m PyInstaller --noconfirm --clean --onedir --windowed --uac-admin
           --name DiskTool --icon DiskTool.ico
           --add-data "web;web" --add-data "redist;redist"
+          --distpath dist_folder --workpath build_folder
           app.py
 
-      - name: Make the release folder
+      - name: Build exe - single exe version
+        run: >
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --uac-admin
+          --name DiskTool --icon DiskTool.ico
+          --add-data "web;web" --add-data "redist;redist"
+          --distpath dist_single --workpath build_single
+          app.py
+
+      - name: Make the two release zips
         shell: pwsh
         run: |
+          # 1) Fast folder: DiskTool.exe + _internal + bin  (opens fastest)
           New-Item -ItemType Directory -Force release\DiskTool | Out-Null
-          Copy-Item dist\DiskTool\* release\DiskTool\ -Recurse
+          Copy-Item dist_folder\DiskTool\* release\DiskTool\ -Recurse
           Copy-Item bin release\DiskTool\bin -Recurse
           Compress-Archive -Path release\DiskTool -DestinationPath DiskTool.zip -Force
+          # 2) Single exe: one DiskTool.exe + bin  (unpacks itself on every start)
+          New-Item -ItemType Directory -Force release_single\DiskTool | Out-Null
+          Copy-Item dist_single\DiskTool.exe release_single\DiskTool\
+          Copy-Item bin release_single\DiskTool\bin -Recurse
+          Compress-Archive -Path release_single\DiskTool -DestinationPath DiskTool-SingleExe.zip -Force
+          Get-Item DiskTool.zip, DiskTool-SingleExe.zip | Format-Table Name, Length
 
       - uses: actions/upload-artifact@v5
         with:
@@ -81,4 +97,4 @@ jobs:
         run: |
           gh release delete latest --yes --cleanup-tag
           if ($LASTEXITCODE -ne 0) { Write-Host "No old release - first build." }
-          gh release create latest DiskTool.zip --title "Disk Tool (latest build)" --notes "Download DiskTool.zip, extract, double-click DiskTool.exe."
+          gh release create latest DiskTool.zip DiskTool-SingleExe.zip --title "Disk Tool (latest build)" --notes "Two versions - pick one, extract it, double-click DiskTool.exe inside the DiskTool folder:`n`n- DiskTool.zip - fast folder version (opens fastest, recommended)`n- DiskTool-SingleExe.zip - one DiskTool.exe + bin folder (unpacks itself every start, a little slower)"
