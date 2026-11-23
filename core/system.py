@@ -26,10 +26,12 @@ def capture(cmd):
     """Run a command, return (exit_code, stdout_text)."""
     try:
         p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                           stdin=subprocess.DEVNULL, creationflags=NOWIN)
+                           stdin=subprocess.DEVNULL, creationflags=NOWIN, timeout=180)
         return p.returncode, p.stdout.decode("utf-8", errors="replace")
     except FileNotFoundError:
         return 127, ""
+    except subprocess.TimeoutExpired:          # a stuck WMI/storage query must not freeze the app
+        return 124, ""
 
 
 def powershell(script, stream=True):

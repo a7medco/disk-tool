@@ -17,27 +17,27 @@ sys.path.insert(0, HERE)
 
 from core import health, paths, startup, sysinfo, system, ventoy, winops   # noqa: E402
 
-VERSION = "2.3"
+VERSION = "2.3.1"
 
 
 class Api:
     """Exposed to the web UI as window.pywebview.api.*"""
     def __init__(self, goto=""):
-        self.window = None
-        self.goto = goto
-        self.stop_evt = threading.Event()
+        self._window = None
+        self._goto = goto
+        self._stop = threading.Event()
 
     # output streaming -> the page's console
     def _emit(self, line):
-        if self.window:
-            self.window.evaluate_js("window.onLog(%s)" % json.dumps(line))
+        if self._window:
+            self._window.evaluate_js("window.onLog(%s)" % json.dumps(line))
 
     def _done(self, code):
-        if self.window:
-            self.window.evaluate_js("window.onDone(%s)" % json.dumps(code))
+        if self._window:
+            self._window.evaluate_js("window.onDone(%s)" % json.dumps(code))
 
     def _bg(self, fn):
-        self.stop_evt.clear()
+        self._stop.clear()
 
         def work():
             try:
@@ -66,7 +66,7 @@ class Api:
 
     def choose_folder(self):
         import webview
-        res = self.window.create_file_dialog(webview.FOLDER_DIALOG)
+        res = self._window.create_file_dialog(webview.FOLDER_DIALOG)
         return res[0] if res else ""
 
     def choose_file(self, kind="iso"):
@@ -74,21 +74,21 @@ class Api:
         types = {"iso": ("ISO (*.iso)", "All files (*.*)"),
                  "img": ("Disk images (*.img;*.iso;*.bin;*.raw)", "All files (*.*)"),
                  "exe": ("Ventoy2Disk (Ventoy2Disk.exe)", "Programs (*.exe)")}[kind]
-        res = self.window.create_file_dialog(webview.OPEN_DIALOG, file_types=types)
+        res = self._window.create_file_dialog(webview.OPEN_DIALOG, file_types=types)
         return res[0] if res else ""
 
     def choose_files(self):
         import webview
-        res = self.window.create_file_dialog(
+        res = self._window.create_file_dialog(
             webview.OPEN_DIALOG, allow_multiple=True,
             file_types=("Boot images (*.iso;*.wim;*.img;*.vhd;*.vhdx;*.efi)", "All files (*.*)"))
         return list(res) if res else []
 
     def start_info(self):
-        return {"goto": self.goto, "version": VERSION}
+        return {"goto": self._goto, "version": VERSION}
 
     def stop(self):
-        self.stop_evt.set()
+        self._stop.set()
         return True
 
     # read-only, returns data straight to the UI
@@ -136,7 +136,7 @@ class Api:
         self._bg(lambda: winops.import_drivers(folder, self._emit)); return True
 
     def write_image(self, img, number):
-        self._bg(lambda: winops.write_image(img, number, self._emit, self.stop_evt)); return True
+        self._bg(lambda: winops.write_image(img, number, self._emit, self._stop)); return True
 
     def format_volume(self, letter, fs, label):
         self._bg(lambda: winops.format_volume(letter, fs, label, self._emit)); return True
@@ -162,7 +162,7 @@ class Api:
         return health.smart_details()
 
     def surface_test(self, number, size):
-        self._bg(lambda: health.surface_test(number, size, self._emit, self.stop_evt)); return True
+        self._bg(lambda: health.surface_test(number, size, self._emit, self._stop)); return True
 
     def system_repair(self, kind):
         self._bg(lambda: health.system_repair(kind, self._emit)); return True
@@ -225,7 +225,7 @@ def main():
         "Disk Tool %s  -  Abuzaid   |   صدقة جارية على روح زينب عبد العليم مصطفى رحمها الله" % VERSION,
         os.path.join(paths.RES, "web", "index.html"),
         js_api=api, width=1080, height=740, min_size=(900, 620))
-    api.window = window
+    api._window = window
     webview.start()
 
 
