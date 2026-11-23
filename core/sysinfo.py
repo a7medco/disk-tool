@@ -6,8 +6,80 @@ STATUS = {0: "Unlicensed", 1: "Activated", 2: "Grace period", 3: "Grace period",
           4: "Not genuine", 5: "Notification", 6: "Extended grace"}
 
 
+def _battery_powercfg():
+    """Main source: Windows' own battery report (powercfg /batteryreport /xml)."""
+    import os
+    import subprocess
+    import tempfile
+    import xml.etree.ElementTree as ET
+    from .system import NOWIN
+    out = os.path.join(tempfile.gettempdir(), "disktool_battery.xml")
+    try:
+        os.remove(out)
+    except OSError:
+        pass
+    try:
+        subprocess.run(["powercfg", "/batteryreport", "/xml", "/output", out],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       stdin=subprocess.DEVNULL, creationflags=NOWIN, timeout=60)
+        root = ET.parse(out).getroot()
+    except Exception:
+        return []
+
+    def txt(node, name):
+        for ch in node:
+            if ch.tag.split("}")[-1] == name:
+                return (ch.text or "").strip()
+        return ""
+    rows = []
+    for b in root.iter():
+        if b.tag.split("}")[-1] != "Battery":
+            continue
+        def num(n):
+            try:
+                return int(float(txt(b, n)))
+            except ValueError:
+                return None
+        rows.append({"Name": txt(b, "Id"), "Maker": txt(b, "Manufacturer"),
+                     "Serial": txt(b, "SerialNumber"), "Chem": txt(b, "Chemistry"),
+                     "Design": num("DesignCapacity"), "Full": num("FullChargeCapacity"),
+                     "Cycles": num("CycleCount"), "Charge": None})
+    return rows
+
+
 def battery():
-    """Health % = FullChargedCapacity / DesignedCapacity (root\\wmi, in mWh)."""
+    """Health % = full charge capacity / design capacity (mWh).
+
+    1st: powercfg battery report (works on most laptops)
+    2nd: root\\wmi classes (fallback)
+    """
+    rows = _battery_powercfg()
+    if rows:
+        chg = ps_json("Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue | "
+                      "Select-Object EstimatedChargeRemaining")
+        for i, r in enumerate(rows):
+            if i < len(chg):
+                r["Charge"] = chg[i].get("EstimatedChargeRemaining")
+        return _grade(rows)
+    return _grade(_battery_wmi())
+
+
+def battery_report_html():
+    """Make the full HTML battery report and open it."""
+    import os
+    import subprocess
+    import tempfile
+    from .system import NOWIN
+    out = os.path.join(tempfile.gettempdir(), "battery-report.html")
+    subprocess.run(["powercfg", "/batteryreport", "/output", out], stdout=subprocess.DEVNULL,
+                   stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, creationflags=NOWIN, timeout=60)
+    if os.path.isfile(out):
+        os.startfile(out)
+        return True
+    return False
+
+
+def _battery_wmi():
     rows = ps_json(
         "$d=@(Get-CimInstance -Namespace root\\wmi -ClassName BatteryStaticData -ErrorAction SilentlyContinue);"
         "$f=@(Get-CimInstance -Namespace root\\wmi -ClassName BatteryFullChargedCapacity -ErrorAction SilentlyContinue);"
@@ -17,6 +89,10 @@ def battery():
         "Name=$d[$i].DeviceName; Maker=$d[$i].ManufactureName; Serial=$d[$i].SerialNumber;"
         "Design=$d[$i].DesignedCapacity; Full=($f[$i]).FullChargedCapacity;"
         "Cycles=($c[$i]).CycleCount; Charge=($b[$i]).EstimatedChargeRemaining}}")
+    return rows
+
+
+def _grade(rows):
     for r in rows:
         try:
             r["Health"] = round(100.0 * r["Full"] / r["Design"]) if r.get("Design") else None

@@ -167,37 +167,49 @@ def windows_to_go(src, index, disk_number, log, stop=None):
 # WinNTSetup-style: prepare an (external) SSD/HDD that will go inside a PC.
 # Layouts follow Microsoft's "UEFI/GPT-based hard drive partitions" and
 # "BIOS/MBR-based hard drive partitions" docs.
-def install_to_disk(src, index, disk_number, scheme, drivers, compact, log, stop=None):
-    letters = _free_letters(2)
+def install_to_disk(src, index, disk_number, scheme, drivers, compact, log, stop=None, recovery=True):
+    letters = _free_letters(3)
     if not letters:
         log("[X] Not enough free drive letters.")
         return 1
-    S, W = letters
+    S, W, R = letters
+    rec_mb = 1024                       # room for future WinRE updates
     if scheme == "mbr":
-        log("1/5  Partitioning Disk %s - MBR / Legacy BIOS" % disk_number)
+        fw = "BIOS"
+        log("1/6  Partitioning Disk %s - MBR / Legacy BIOS%s" % (disk_number, " + Recovery" if recovery else ""))
         script = ("select disk %s\nclean\nconvert mbr\n"
                   "create partition primary size=100\nformat quick fs=ntfs label=System\n"
                   "assign letter=%s\nactive\n"
-                  "create partition primary\nformat quick fs=ntfs label=Windows\n"
-                  "assign letter=%s\nexit\n" % (disk_number, S, W))
-        fw = "BIOS"
+                  "create partition primary\n" % (disk_number, S))
+        if recovery:
+            script += "shrink minimum=%d\n" % rec_mb
+        script += "format quick fs=ntfs label=Windows\nassign letter=%s\n" % W
+        if recovery:
+            script += ("create partition primary\nformat quick fs=ntfs label=Recovery\n"
+                       "assign letter=%s\nset id=27\n" % R)
     else:
-        log("1/5  Partitioning Disk %s - GPT / UEFI" % disk_number)
+        fw = "UEFI"
+        log("1/6  Partitioning Disk %s - GPT / UEFI%s" % (disk_number, " + Recovery" if recovery else ""))
         script = ("select disk %s\nclean\nconvert gpt\n"
                   "create partition efi size=260\nformat quick fs=fat32 label=System\n"
                   "assign letter=%s\n"
                   "create partition msr size=16\n"
-                  "create partition primary\nformat quick fs=ntfs label=Windows\n"
-                  "assign letter=%s\nexit\n" % (disk_number, S, W))
-        fw = "UEFI"
-    if diskpart_stream(script, log) != 0:
+                  "create partition primary\n" % (disk_number, S))
+        if recovery:
+            script += "shrink minimum=%d\n" % rec_mb
+        script += "format quick fs=ntfs label=Windows\nassign letter=%s\n" % W
+        if recovery:
+            script += ("create partition primary\nformat quick fs=ntfs label=Recovery\n"
+                       "assign letter=%s\nset id=de94bba4-06d1-4d40-a16a-bfd50179d6ac\n"
+                       "gpt attributes=0x8000000000000001\n" % R)
+    if diskpart_stream(script + "exit\n", log) != 0:
         return 1
 
     img, iso = _image_from_source(src, log)
     if not img:
         return 1
     try:
-        log("2/5  Applying Windows (edition %s)%s..." % (index, " as Compact OS" if compact else ""))
+        log("2/6  Applying Windows (edition %s)%s..." % (index, " as Compact OS" if compact else ""))
         args = ["dism", "/Apply-Image", "/ImageFile:" + img, "/Index:%s" % index,
                 "/ApplyDir:%s:\\" % W]
         if compact:
@@ -211,24 +223,57 @@ def install_to_disk(src, index, disk_number, scheme, drivers, compact, log, stop
 
     if drivers:
         if os.path.isdir(drivers):
-            log("3/5  Adding drivers from %s ..." % drivers)
+            log("3/6  Adding drivers from %s ..." % drivers)
             run_stream(["dism", "/Image:%s:\\" % W, "/Add-Driver",
                         "/Driver:" + drivers, "/Recurse"], log)
         else:
             log("[!] Drivers folder not found - skipped.")
     else:
-        log("3/5  No drivers folder - skipped.")
+        log("3/6  No drivers folder - skipped.")
 
-    log("4/5  Writing %s boot files to the new disk (this PC's boot is not touched)..." % fw)
-    bcd = os.path.join(W + ":\\Windows", "System32", "bcdboot.exe")
+    log("4/6  Writing %s boot files to the new disk (this PC's boot is not touched)..." % fw)
+    sys32 = os.path.join(W + ":\\Windows", "System32")
+    bcd = os.path.join(sys32, "bcdboot.exe")
     if not os.path.isfile(bcd):
         bcd = "bcdboot"
     if run_stream([bcd, W + ":\\Windows", "/s", S + ":", "/f", fw], log) != 0:
         log("[X] bcdboot failed.")
         return 1
 
-    log("5/5  Removing the temporary letter of the boot partition...")
+    if recovery:
+        log("5/6  Setting up Windows Recovery (WinRE) on its own partition...")
+        if not setup_winre(W, R, log):
+            log("[!] Recovery was not set up - Windows still works, only the recovery menu is missing.")
+    else:
+        log("5/6  Recovery partition not requested - skipped.")
+
+    log("6/6  Hiding the helper partitions...")
     diskpart_stream("select volume %s\nremove letter=%s\nexit\n" % (S, S), log)
+    if recovery:
+        diskpart_stream("select volume %s\nremove letter=%s\nexit\n" % (R, R), log)
     log("[OK] Done. Put this disk inside the PC and boot it in %s mode - Windows finishes "
         "setting up and shows the welcome screen." % ("UEFI" if fw == "UEFI" else "Legacy/CSM"))
     return 0
+
+
+def setup_winre(W, R, log):
+    """Copy Winre.wim to R:\\Recovery\\WindowsRE and register it (Microsoft 'Deploy Windows RE')."""
+    import shutil
+    src = os.path.join(W + ":\\Windows", "System32", "Recovery", "Winre.wim")
+    if not os.path.isfile(src):
+        log("[X] Winre.wim is not inside this Windows image (some trimmed ISOs remove it).")
+        return False
+    dst_dir = R + ":\\Recovery\\WindowsRE"
+    try:
+        os.makedirs(dst_dir, exist_ok=True)
+        shutil.copyfile(src, os.path.join(dst_dir, "Winre.wim"))
+    except OSError as e:
+        log("[X] Could not copy Winre.wim: %s" % e)
+        return False
+    ra = os.path.join(W + ":\\Windows", "System32", "Reagentc.exe")
+    if not os.path.isfile(ra):
+        ra = "reagentc"
+    if run_stream([ra, "/setreimage", "/path", dst_dir, "/target", W + ":\\Windows"], log) != 0:
+        return False
+    run_stream([ra, "/info", "/target", W + ":\\Windows"], log)
+    return True

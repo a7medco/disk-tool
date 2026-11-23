@@ -143,7 +143,7 @@
 </head>
 <body>
   <header class="top">
-    <div><h1>Disk Tool</h1><p>Windows service toolkit · Version <span id="ver">2.5.1</span></p></div>
+    <div><h1>Disk Tool</h1><p>Windows service toolkit · Version <span id="ver">2.6</span></p></div>
     <div class="brandmark">
       <div class="emblem">A</div><div class="wordmark">ABUZAID</div>
       <button class="themebtn" id="themebtn" onclick="toggleTheme()">☀ Light</button>
@@ -626,7 +626,8 @@ async function viewBattery(){
   setTitle("Battery health","How much of the original capacity the battery still holds.");
   content().innerHTML='<div class="empty">Reading the battery…</div>';
   const l=PREVIEW?[{Name:"DELL 7FHHV",Maker:"SMP",Serial:"1234",Design:51000,Full:38760,Cycles:212,Charge:87,Health:76,Verdict:"warn"}]:await api().battery();
-  if(!l.length){content().innerHTML='<div class="empty">No battery found (desktop PC, or the battery is not detected).</div>';return;}
+  const rep='<div class="row" style="margin-top:6px"><button class="btn ghost" onclick="batRep()">Open full Windows battery report</button></div>';
+  if(!l.length){content().innerHTML='<div class="empty">No battery found. On a laptop this means Windows can\'t see it: check the battery connector, update the BIOS / ACPI battery driver.</div>'+rep;return;}
   const col={ok:"var(--good)",warn:"var(--warn)",bad:"var(--bad)","?":"var(--muted)"};
   const txt={ok:"Good",warn:"Worn — still usable",bad:"Replace the battery","?":"Not reported"};
   content().innerHTML=l.map(b=>`<div class="card box" style="max-width:640px;margin-bottom:16px">
@@ -642,8 +643,12 @@ async function viewBattery(){
       <tr><td>Charge cycles</td><td style="text-align:right">${b.Cycles||"—"}</td></tr>
       <tr><td>Current charge</td><td style="text-align:right">${b.Charge!=null?b.Charge+"%":"—"}</td></tr>
     </tbody></table></div>`).join("")+
-    '<div class="sectionhint">80%+ good · 60–79% worn · under 60% replace. Some laptops report wrong numbers; charge to 100% once for an accurate reading.</div>';
+    '<div class="sectionhint">80%+ good · 60–79% worn · under 60% replace. Some laptops report wrong numbers; charge to 100% once for an accurate reading.</div>'+rep;
 }
+
+async function batRep(){if(PREVIEW){appendLog("> powercfg /batteryreport (preview)");return;}
+  appendLog("> powercfg /batteryreport");const ok=await api().battery_report();
+  appendLog(ok?"[OK] Battery report opened in your browser.":"[X] Windows could not make a battery report on this PC.");}
 
 /* ---- Windows license ---- */
 async function viewLicense(){
@@ -733,6 +738,7 @@ async function viewInst(){
          <label><input type="radio" name="isch" value="mbr"> Legacy BIOS / MBR — older PCs</label></div></div>
      <div class="field"><label>Drivers folder (optional — e.g. from “Drivers backup”)</label>
        <div class="pathrow"><input id="i-drv" placeholder="leave empty to skip"><button class="btn ghost" onclick="pickDir('i-drv')">Browse</button></div></div>
+     <label class="switch"><input type="checkbox" id="i-rec" checked> Recovery partition (WinRE — repair / reset menu)</label>
      <label class="switch"><input type="checkbox" id="i-cmp"> Compact OS (saves ~2–3 GB, good for small SSDs)</label>
     </div></div>
    <div class="row" style="margin-top:14px"><button class="btn" onclick="doInst()">Install Windows</button></div>`;
@@ -747,11 +753,11 @@ async function instEd(){const src=document.getElementById("i-src").value,sel=doc
 function doInst(){const d=(window._in||[])[+document.getElementById("i-disk").value],
   src=document.getElementById("i-src").value,idx=document.getElementById("i-idx").value,
   sch=document.querySelector('input[name=isch]:checked').value,drv=document.getElementById("i-drv").value.trim(),
-  cmp=document.getElementById("i-cmp").checked;
+  cmp=document.getElementById("i-cmp").checked,rec=document.getElementById("i-rec").checked;
   if(!src||!idx){alert("Choose the Windows file and an edition.");return;}
   if(!d){alert("Connect the SSD/HDD by USB.");return;}
   if(!confirmDisk(d,"Install Windows ("+sch.toUpperCase()+")."))return;
-  run("install_to_disk",[src,+idx,d.Number,sch,drv,cmp],"dism /Apply-Image + bcdboot /f "+(sch==="gpt"?"UEFI":"BIOS"));}
+  run("install_to_disk",[src,+idx,d.Number,sch,drv,cmp,rec],"dism /Apply-Image + bcdboot /f "+(sch==="gpt"?"UEFI":"BIOS"));}
 async function pickFile(id){if(PREVIEW)return;const p=await window.pywebview.api.choose_file();if(p)document.getElementById(id).value=p;}
 
 function applyTheme(t){document.documentElement.setAttribute("data-theme",t);

@@ -17,7 +17,7 @@ sys.path.insert(0, HERE)
 
 from core import deploy, health, paths, settings, startup, sysinfo, system, ventoy, winops   # noqa: E402
 
-VERSION = "2.5.1"
+VERSION = "2.6"
 
 
 class Api:
@@ -213,13 +213,16 @@ class Api:
     def wtg_create(self, src, index, number):
         self._bg(lambda: deploy.windows_to_go(src, index, number, self._emit, self._stop)); return True
 
-    def install_to_disk(self, src, index, number, scheme, drivers, compact):
+    def install_to_disk(self, src, index, number, scheme, drivers, compact, recovery=True):
         self._bg(lambda: deploy.install_to_disk(src, index, number, scheme, drivers, bool(compact),
-                                                self._emit, self._stop)); return True
+                                                self._emit, self._stop, bool(recovery))); return True
 
     # ---- battery & license ----
     def battery(self):
         return sysinfo.battery()
+
+    def battery_report(self):
+        return sysinfo.battery_report_html()
 
     def license_info(self):
         return sysinfo.license_info()
