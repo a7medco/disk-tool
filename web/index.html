@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Disk Tool</title>
+<style>
+  @font-face{font-family:"DedNaskh";font-weight:600;src:url(data:font/woff2;base64,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) format("woff2")}
+  @font-face{font-family:"DedTitle";font-weight:800;src:url(data:font/woff2;base64,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) format("woff2")}
+  :root{
+    --bg:#faf8f5; --panel:#ffffff; --ink:#2a2724; --muted:#857d74;
+    --line:#ece7df; --side:#211f1c; --side-2:#2d2a26; --side-ink:#e9e4dc;
+    --accent:#c96442; --accent-soft:#f6e9e3;
+    --ok:#2f9e44; --warn:#e0872f; --bad:#c23b2e;
+    --console:#1b1917; --console-ink:#e7e2da; --console-cmd:#d8a07a;
+    --radius:13px; --shadow:0 1px 2px rgba(40,34,28,.05),0 6px 20px rgba(40,34,28,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{display:flex;background:var(--bg);color:var(--ink);
+    font-family:"Inter","Segoe UI",system-ui,-apple-system,sans-serif;
+    font-size:14px;overflow:hidden}
+
+  /* sidebar */
+  .side{width:232px;flex-shrink:0;background:var(--side);color:var(--side-ink);
+    display:flex;flex-direction:column;padding:22px 14px}
+  .brand{display:flex;align-items:center;gap:11px;padding:4px 10px 20px}
+  .logo{width:34px;height:34px;border-radius:9px;flex-shrink:0;
+    background:linear-gradient(145deg,var(--accent),#e08b5c);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:17px}
+  .brand h1{font-size:16px;font-weight:650;letter-spacing:-.2px}
+  .brand p{font-size:11.5px;color:#9a9188;margin-top:1px}
+  .nav{display:flex;flex-direction:column;gap:1px;margin-top:2px;flex:1 1 auto;overflow-y:auto;min-height:0}
+  .nav::-webkit-scrollbar{width:6px}.nav::-webkit-scrollbar-thumb{background:#3a3631;border-radius:4px}
+  .nav .grp{font-size:10.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+    color:#776e64;padding:12px 12px 4px}
+  .nav button{display:flex;align-items:center;gap:11px;width:100%;border:0;cursor:pointer;
+    background:transparent;color:#c4bcb1;font:inherit;font-size:13.5px;text-align:left;
+    padding:8px 12px;border-radius:9px;transition:.14s}
+  .nav button .ic{width:17px;text-align:center;opacity:.9}
+  .nav button:hover{background:var(--side-2);color:#fff}
+  .nav button.active{background:var(--accent);color:#fff}
+  .nav .soon{opacity:.45;cursor:default}
+  .nav .soon:hover{background:transparent;color:#c4bcb1}
+  .dedic{margin-top:12px;padding:14px 10px 10px;border-top:1px solid #3a3631;
+    text-align:center;flex-shrink:0}
+  .dedic-k{font-family:"DedTitle","Segoe UI",sans-serif;font-weight:800;color:#e9906c;
+    font-size:15px;letter-spacing:.2px;margin-bottom:6px}
+  .dedic-n{font-family:"DedNaskh","Segoe UI",serif;font-weight:600;color:#f4efe8;
+    font-size:17.5px;line-height:1.7;white-space:nowrap}
+  .dedic-s{font-family:"DedNaskh","Segoe UI",serif;font-weight:600;color:#cfc6bb;font-size:14px;line-height:1.6}
+  .dedic-d{font-family:"DedNaskh","Segoe UI",serif;font-weight:600;color:#cfc6bb;font-size:14px;margin-top:2px}
+  .side .foot{font-size:10.5px;color:#6b635a;padding:8px 12px 2px;line-height:1.6;text-align:center}
+
+  /* main */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .head{padding:22px 28px 10px}
+  .head h2{font-size:21px;font-weight:650;letter-spacing:-.3px}
+  .head p{color:var(--muted);font-size:13px;margin-top:3px}
+  .content{flex:1;overflow:auto;padding:12px 28px 20px}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow)}
+  .row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+
+  .btn{border:0;cursor:pointer;font:inherit;font-weight:600;font-size:13.5px;border-radius:9px;
+    padding:9px 18px;background:var(--accent);color:#fff;transition:.14s;box-shadow:var(--shadow)}
+  .btn:hover{filter:brightness(1.05)}
+  .btn.ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line);box-shadow:none}
+  .btn.ghost:hover{background:#f4efe8}
+  .btn:disabled{opacity:.5;cursor:default;filter:none}
+
+  table{width:100%;border-collapse:collapse;overflow:hidden;border-radius:var(--radius)}
+  thead th{background:#f7f2ec;text-align:left;font-size:12px;font-weight:650;color:#8a8178;
+    padding:12px 16px;border-bottom:1px solid var(--line)}
+  tbody td{padding:13px 16px;border-bottom:1px solid var(--line);font-size:13.5px}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:#fcf9f5}
+  .model{font-weight:600}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
+    padding:4px 10px;border-radius:20px}
+  .badge::before{content:"";width:7px;height:7px;border-radius:50%}
+  .b-ok{background:#eaf6ec;color:var(--ok)} .b-ok::before{background:var(--ok)}
+  .b-warn{background:#fdf1e3;color:var(--warn)} .b-warn::before{background:var(--warn)}
+  .b-bad{background:#fbeae8;color:var(--bad)} .b-bad::before{background:var(--bad)}
+  .tag{font-size:11px;font-weight:600;color:var(--muted);background:#f2ede6;
+    padding:3px 8px;border-radius:6px}
+
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:15px;max-width:430px}
+  .field label{font-size:12.5px;font-weight:600;color:#6f675e}
+  .field input,.field select{font:inherit;font-size:13.5px;padding:10px 12px;border:1px solid var(--line);
+    border-radius:9px;background:#fff;color:var(--ink);outline:none;transition:.14s}
+  .field input:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .pathrow{display:flex;gap:8px}
+  .pathrow input{flex:1}
+  .radio{display:flex;flex-direction:column;gap:9px;margin:4px 0 16px}
+  .radio label{display:flex;align-items:center;gap:9px;font-size:13.5px;cursor:pointer;color:var(--ink)}
+  .warnbox{background:var(--accent-soft);border:1px solid #eccdbf;color:#8a4a30;
+    border-radius:10px;padding:11px 14px;font-size:12.5px;margin-bottom:16px;max-width:560px}
+  .sectionhint{color:var(--muted);font-size:12.5px;margin:-4px 0 16px}
+
+  /* console */
+  .console-wrap{padding:0 28px 22px}
+  .console-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+  .console-h span{font-size:12px;font-weight:650;color:#8a8178;text-transform:uppercase;letter-spacing:.5px}
+  .console-h .clear{font-size:12px;color:var(--muted);cursor:pointer;background:0;border:0}
+  .console{height:150px;overflow:auto;background:var(--console);color:var(--console-ink);
+    border-radius:var(--radius);padding:14px 16px;font-family:"SF Mono",Consolas,monospace;
+    font-size:12.5px;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+  .console .cmd{color:var(--console-cmd)}
+  .btn.stop{background:var(--bad)}
+  .btn.small{padding:6px 12px;font-size:12.5px}
+  .mono{font-family:Consolas,monospace;font-size:12px;color:var(--muted);max-width:300px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  .box{padding:18px 20px}
+  .box h3{font-size:14.5px;font-weight:650;margin-bottom:10px}
+  .switch{display:flex;align-items:center;gap:8px;font-size:13.5px;margin:6px 0;cursor:pointer}
+  .console .ok{color:#79b47f} .console .bad{color:#e08a7f}
+  .empty{color:var(--muted);font-size:13px;padding:24px 4px}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid #fff6;border-top-color:#fff;
+    border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px;margin-right:7px}
+  @keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+  <aside class="side">
+    <div class="brand">
+      <div class="logo">A</div>
+      <div><h1>Disk Tool</h1><p>by Abuzaid · <span id="ver">v2.2</span></p></div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="dedic" dir="rtl">
+      <div class="dedic-k">صدقة جارية</div>
+      <div class="dedic-s">على روح</div>
+      <div class="dedic-n">زينب عبد العليم مصطفى</div>
+      <div class="dedic-d">رحمها الله</div>
+    </div>
+    <div class="foot">Abuzaid · Maadi, Cairo</div>
+  </aside>
+
+  <main class="main">
+    <div class="head"><h2 id="title">Disks &amp; health</h2><p id="sub"></p></div>
+    <div class="content" id="content"></div>
+    <div class="console-wrap">
+      <div class="console-h"><span>Output</span><button class="clear" onclick="clearLog()">clear</button></div>
+      <div class="console" id="console"><div class="empty">Output from commands shows here.</div></div>
+    </div>
+  </main>
+
+<script>
+const FS=["NTFS","exFAT","FAT32"], SCHEMES=["GPT","MBR"];
+const VIEWS=[
+  {grp:"Drives"},
+  {id:"disks",   name:"Disks & health",     ic:"◇", fn:viewDisks},
+  {id:"format",  name:"Format a drive",     ic:"▱", fn:viewFormat},
+  {id:"part",    name:"Partition tools",    ic:"▤", fn:viewPart},
+  {id:"repair",  name:"HDD repair",         ic:"✚", fn:viewRepair},
+  {id:"copy",    name:"Fast copy",          ic:"⇄", fn:viewCopy},
+  {grp:"Bootable"},
+  {id:"usb",     name:"Windows USB",        ic:"▸", fn:viewUSB},
+  {id:"multi",   name:"Multi-ISO USB",      ic:"❖", fn:viewMulti},
+  {id:"img",     name:"Write IMG / Linux",  ic:"◈", fn:viewImg},
+  {grp:"Windows"},
+  {id:"ram",     name:"Memory test",        ic:"▦", fn:viewRam},
+  {id:"startup", name:"Startup apps",       ic:"⏻", fn:viewStartup},
+  {id:"drivers", name:"Drivers backup",     ic:"❏", fn:viewDrivers},
+  {id:"locks",   name:"Device locks",       ic:"⬚", fn:viewLocks},
+  {id:"pass",    name:"Reset password",     ic:"✳", fn:viewPass},
+  {id:"enc",     name:"Encrypt (VeraCrypt)",ic:"⬢", fn:viewEncrypt},
+  {id:"menu",    name:"Right-click menu",   ic:"☰", fn:viewMenu},
+];
+let PREVIEW = true;   // becomes false once pywebview is ready
+let busy=false;
+const api=()=>window.pywebview.api;
+
+function nav(){
+  const n=document.getElementById("nav");
+  VIEWS.forEach(v=>{
+    if(v.grp){const g=document.createElement("div");g.className="grp";g.textContent=v.grp;n.appendChild(g);return;}
+    const b=document.createElement("button");
+    b.innerHTML=`<span class="ic">${v.ic}</span>${v.name}`;
+    b.onclick=()=>{if(busy){appendLog("[!] Wait for the current job to finish (or press Stop).");return;}active(b);v.fn();};
+    b.dataset.id=v.id; n.appendChild(b);
+  });
+}
+function go(id){const v=VIEWS.find(x=>x.id===id)||VIEWS[1];
+  const b=document.querySelector(`.nav button[data-id="${v.id}"]`);active(b);v.fn();}
+function active(b){document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");}
+function content(){return document.getElementById("content");}
+function setTitle(t,s){document.getElementById("title").textContent=t;document.getElementById("sub").textContent=s||"";}
+function setBusy(b){busy=b;document.querySelectorAll(".btn:not(.keep)").forEach(x=>x.disabled=b);
+  document.querySelectorAll(".btn.stop").forEach(x=>x.disabled=!b);}
+function stopJob(){if(!PREVIEW)api().stop();appendLog("Stopping...");}
+
+/* ---- console ---- */
+function appendLog(line){
+  const c=document.getElementById("console");
+  if(c.querySelector(".empty"))c.innerHTML="";
+  const d=document.createElement("div");
+  if(line.startsWith(">")||line.startsWith("    "))d.className="cmd";
+  else if(line.startsWith("[OK]"))d.className="ok";
+  else if(line.startsWith("[X]"))d.className="bad";
+  d.textContent=line; c.appendChild(d); c.scrollTop=c.scrollHeight;
+}
+function clearLog(){document.getElementById("console").innerHTML='<div class="empty">Output from commands shows here.</div>';}
+window.onLog=appendLog;
+window.onDone=function(code){setBusy(false);};
+
+/* ---- data ---- */
+async function getDisks(){
+  if(PREVIEW)return [
+    {Number:0,FriendlyName:"Samsung SSD 970 EVO Plus",Size:500107862016,BusType:"NVMe",PartitionStyle:"GPT",IsBoot:true,IsSystem:true,HealthStatus:"Healthy"},
+    {Number:1,FriendlyName:"WD Elements 25A3",Size:1000204886016,BusType:"USB",PartitionStyle:"MBR",IsBoot:false,HealthStatus:"Warning"},
+    {Number:2,FriendlyName:"SanDisk Ultra Flash",Size:32010928128,BusType:"USB",PartitionStyle:"MBR",IsBoot:false,HealthStatus:"Healthy"},
+  ];
+  return await api().list_disks();
+}
+const GB=b=>(b/1e9).toFixed(b<1e11?1:0)+" GB";
+function badge(h){const m={Healthy:["b-ok",h],Warning:["b-warn",h+" · back up"],Unhealthy:["b-bad",h+" · replace"]};
+  const[k,t]=m[h]||["tag",h];return `<span class="badge ${k}">${t}</span>`;}
+
+/* ---- views ---- */
+async function viewDisks(){
+  setTitle("Disks & health","Every drive connected to this PC, with its SMART health.");
+  content().innerHTML=`<div class="row" style="margin-bottom:14px">
+    <button class="btn" onclick="viewDisks()">Refresh</button></div>
+    <div class="card"><table><thead><tr>
+    <th>#</th><th>Model</th><th>Size</th><th>Bus</th><th>Role</th><th>Health</th></tr></thead>
+    <tbody id="dt"><tr><td colspan="6" class="empty">Reading drives…</td></tr></tbody></table></div>`;
+  const rows=await getDisks();
+  document.getElementById("dt").innerHTML=rows.map(d=>`<tr>
+    <td>${d.Number}</td><td class="model">${d.FriendlyName||"?"}</td><td>${GB(d.Size||0)}</td>
+    <td>${d.BusType||"?"}</td><td>${(d.IsBoot||d.IsSystem)?'<span class="tag">BOOT</span>':"data"}</td>
+    <td>${badge(d.HealthStatus||"Unknown")}</td></tr>`).join("");
+}
+
+async function viewFormat(){
+  setTitle("Format a drive","Erase a USB disk and set up a fresh filesystem.");
+  const rows=(await getDisks()).filter(d=>d.BusType==="USB"&&!(d.IsBoot||d.IsSystem));
+  const opts=rows.map((d,i)=>`<option value="${i}">Disk ${d.Number} — ${d.FriendlyName} (${GB(d.Size||0)})</option>`).join("");
+  content().innerHTML=`
+    <div class="warnbox">⚠ Only external USB disks are listed. The Windows drive can't be selected here.</div>
+    <div class="field"><label>Disk</label><select id="f-disk">${opts||'<option>No USB disk connected</option>'}</select></div>
+    <div class="field"><label>Filesystem</label><select id="f-fs">${FS.map(x=>`<option>${x}</option>`).join("")}</select></div>
+    <div class="field"><label>Partition scheme</label><select id="f-sch">${SCHEMES.map(x=>`<option>${x}</option>`).join("")}</select></div>
+    <div class="field"><label>Label</label><input id="f-label" value="USB" maxlength="32"></div>
+    <button class="btn" onclick="doFormat()">Format drive</button>`;
+  window._fmt=rows;
+}
+async function doFormat(){
+  const rows=window._fmt||[];const i=+document.getElementById("f-disk").value;
+  if(!rows[i]){alert("Connect and pick a USB disk first.");return;}
+  const d=rows[i],fs=document.getElementById("f-fs").value,sch=document.getElementById("f-sch").value,
+    label=document.getElementById("f-label").value||"USB";
+  if(fs==="FAT32"&&d.Size>32e9){alert("FAT32 is limited to 32 GB. Use exFAT or NTFS.");return;}
+  const t=prompt(`ALL DATA on Disk ${d.Number} (${d.FriendlyName}) will be destroyed.\nType ${d.Number} to confirm:`);
+  if(t===null||t.trim()!==String(d.Number)){appendLog("Cancelled.");return;}
+  setBusy(true);
+  if(PREVIEW){appendLog("> diskpart /s (preview only)");setBusy(false);return;}
+  window.pywebview.api.format_disk(d.Number,fs,sch,label);
+}
+
+function viewCopy(){
+  setTitle("Fast copy","Resumable copy with robocopy — continues if interrupted.");
+  content().innerHTML=`
+    <div class="field"><label>From (source folder)</label>
+      <div class="pathrow"><input id="c-src"><button class="btn ghost" onclick="pick('c-src')">Browse</button></div></div>
+    <div class="field"><label>To (destination folder)</label>
+      <div class="pathrow"><input id="c-dst"><button class="btn ghost" onclick="pick('c-dst')">Browse</button></div></div>
+    <button class="btn" onclick="doCopy()">Start copy</button>`;
+}
+async function pick(id){if(PREVIEW)return;const p=await window.pywebview.api.choose_folder();if(p)document.getElementById(id).value=p;}
+function doCopy(){
+  const src=document.getElementById("c-src").value,dst=document.getElementById("c-dst").value;
+  if(!src||!dst){alert("Choose a source and a destination folder.");return;}
+  setBusy(true);
+  if(PREVIEW){appendLog("> robocopy (preview)");setBusy(false);return;}
+  window.pywebview.api.robocopy(src,dst);
+}
+
+/* ---- Bootable USB ---- */
+async function viewUSB(){
+  setTitle("Bootable Windows USB","Make a UEFI Windows installer from an ISO.");
+  const rows=(await getDisks()).filter(d=>d.BusType==="USB"&&!(d.IsBoot||d.IsSystem));
+  const opts=rows.map((d,i)=>`<option value="${i}">Disk ${d.Number} — ${d.FriendlyName} (${GB(d.Size||0)})</option>`).join("");
+  content().innerHTML=`
+    <div class="warnbox">⚠ The whole USB disk is erased. FAT32 + UEFI; install.wim is split automatically if large.</div>
+    <div class="field"><label>Windows ISO</label>
+      <div class="pathrow"><input id="u-iso"><button class="btn ghost" onclick="pickFile('u-iso')">Browse</button></div></div>
+    <div class="field"><label>USB disk</label><select id="u-disk">${opts||'<option>No USB disk connected</option>'}</select></div>
+    <div class="field"><label>Drive letter to use</label><input id="u-letter" value="W" maxlength="1" style="max-width:90px"></div>
+    <button class="btn" onclick="doUSB()">Create bootable USB</button>`;
+  window._usb=rows;
+}
+function doUSB(){
+  const rows=window._usb||[],i=+document.getElementById("u-disk").value,iso=document.getElementById("u-iso").value;
+  if(!rows[i]){alert("Pick a USB disk.");return;}
+  if(!iso){alert("Choose a Windows ISO file.");return;}
+  const L=(document.getElementById("u-letter").value||"W").slice(0,1).toUpperCase();
+  const t=prompt(`ALL DATA on Disk ${rows[i].Number} will be erased.\nType ${rows[i].Number} to confirm:`);
+  if(t===null||t.trim()!==String(rows[i].Number)){appendLog("Cancelled.");return;}
+  setBusy(true);
+  if(PREVIEW){appendLog("> diskpart + robocopy + dism (preview)");setBusy(false);return;}
+  window.pywebview.api.bootable_usb(iso,rows[i].Number,L);
+}
+
+/* ---- Device locks ---- */
+async function viewLocks(){
+  setTitle("Device locks","Is this PC clean or managed? Read-only — nothing is changed.");
+  content().innerHTML=`<div class="card"><table><thead><tr>
+    <th>Check</th><th>Status</th><th>Meaning</th></tr></thead>
+    <tbody id="lk"><tr><td colspan="3" class="empty">Reading…</td></tr></tbody></table></div>`;
+  let items;
+  if(PREVIEW) items=[
+    {label:"BitLocker",value:"Off",sev:"ok",note:""},
+    {label:"Organisation (Azure AD / Intune)",value:"Managed",sev:"bad",note:"A company/school controls this PC via MDM."},
+    {label:"Secure Boot",value:"On",sev:"info",note:""},
+    {label:"Windows activation",value:"The machine is permanently activated.",sev:"info",note:""}];
+  else items=await window.pywebview.api.device_locks();
+  const cls={ok:"b-ok",warn:"b-warn",bad:"b-bad",info:"tag"};
+  document.getElementById("lk").innerHTML=items.map(it=>`<tr>
+    <td class="model">${it.label}</td>
+    <td>${it.sev==="info"?`<span class="tag">${it.value}</span>`:`<span class="badge ${cls[it.sev]}">${it.value}</span>`}</td>
+    <td style="color:var(--muted)">${it.note||"—"}</td></tr>`).join("");
+}
+
+/* ---- Reset password ---- */
+async function viewPass(){
+  setTitle("Reset a local password","For a LOCAL Windows account on this PC.");
+  let users=PREVIEW?["Administrator","ahmed","client"]:await window.pywebview.api.list_local_users();
+  content().innerHTML=`
+    <div class="warnbox">Works for a local account whose owner is present. It does NOT bypass a Microsoft-account login, a company domain, or BitLocker.</div>
+    <div class="field"><label>Local account</label><select id="p-user">${users.map(u=>`<option>${u}</option>`).join("")}</select></div>
+    <div class="field"><label>New password</label><input id="p-pw" type="password"></div>
+    <div class="row">
+      <button class="btn" onclick="doPass('reset')">Set password</button>
+      <button class="btn ghost" onclick="doPass('admin')">Create new admin account</button></div>
+    <p class="sectionhint" style="margin-top:14px">“Create new admin” adds a brand-new local administrator with the name &amp; password above.</p>`;
+}
+function doPass(mode){
+  const user=document.getElementById("p-user").value, pw=document.getElementById("p-pw").value;
+  if(!user||!pw){alert("Pick an account and type a new password.");return;}
+  setBusy(true);
+  if(PREVIEW){appendLog(`> net user ${user} ***`);setBusy(false);return;}
+  if(mode==="admin") window.pywebview.api.create_admin(user,pw);
+  else window.pywebview.api.reset_password(user,pw);
+}
+
+/* ---- Encrypt (VeraCrypt) ---- */
+function viewEncrypt(){
+  setTitle("Encrypt (VeraCrypt)","A password-protected container that opens on Windows and Mac.");
+  content().innerHTML=`
+    <div class="sectionhint">Needs VeraCrypt installed. The container is one file; it opens like a separate drive.</div>
+    <div class="field"><label>Container file (e.g. D:\\secret.hc)</label><input id="v-path" value="D:\\secret.hc"></div>
+    <div class="row" style="gap:18px;margin-bottom:12px">
+      <div class="field" style="margin:0"><label>Size</label><input id="v-size" value="5G" style="max-width:120px"></div>
+      <div class="field" style="margin:0"><label>Filesystem</label><select id="v-fs"><option>exFAT</option><option>NTFS</option><option>FAT</option></select></div>
+    </div>
+    <div class="field"><label>Password</label><input id="v-pw" type="password"></div>
+    <div class="row">
+      <button class="btn" onclick="doVC('create')">Create container</button>
+      <button class="btn ghost" onclick="doVC('mount')">Open (needs letter)</button>
+      <button class="btn ghost" onclick="doVC('dismount')">Close all</button></div>
+    <div class="field" style="margin-top:14px;max-width:120px"><label>Open as letter</label><input id="v-letter" value="X" maxlength="1"></div>`;
+}
+function doVC(mode){
+  const path=document.getElementById("v-path").value,pw=document.getElementById("v-pw").value,
+    size=document.getElementById("v-size").value,fs=document.getElementById("v-fs").value,
+    letter=(document.getElementById("v-letter").value||"X").slice(0,1).toUpperCase();
+  setBusy(true);
+  if(PREVIEW){appendLog("> VeraCrypt (preview)");setBusy(false);return;}
+  if(mode==="create"){ if(!path||!pw){alert("Need a path and password.");setBusy(false);return;} window.pywebview.api.vc_create(path,size,fs,pw);}
+  else if(mode==="mount"){ if(!path||!pw){alert("Need a path and password.");setBusy(false);return;} window.pywebview.api.vc_mount(path,letter,pw);}
+  else window.pywebview.api.vc_dismount("");
+}
+
+/* ---- helpers ---- */
+const usbDisks=async()=>(await getDisks()).filter(d=>d.BusType==="USB"&&!(d.IsBoot||d.IsSystem));
+const diskOpts=rows=>rows.map((d,i)=>`<option value="${i}">Disk ${d.Number} — ${d.FriendlyName} (${GB(d.Size||0)})</option>`).join("")||'<option value="-1">No USB disk connected</option>';
+function confirmDisk(d,what){const t=prompt(`${what}\nALL DATA on Disk ${d.Number} (${d.FriendlyName}) will be destroyed.\nType ${d.Number} to confirm:`);
+  if(t===null||t.trim()!==String(d.Number)){appendLog("Cancelled.");return false;}return true;}
+function run(fnName,args,pv){setBusy(true);
+  if(PREVIEW){appendLog("> "+(pv||fnName)+" (preview)");setTimeout(()=>setBusy(false),300);return;}
+  api()[fnName](...args);}
+const stopBtn='<button class="btn stop keep" onclick="stopJob()" disabled>Stop</button>';
+async function pickDir(id){if(PREVIEW)return;const p=await api().choose_folder();if(p)document.getElementById(id).value=p;}
+async function pickAny(id,kind){if(PREVIEW)return;const p=await api().choose_file(kind);if(p)document.getElementById(id).value=p;}
+
+/* ---- HDD repair ---- */
+async function viewRepair(){
+  setTitle("HDD repair","Health counters, surface scan, chkdsk, and Windows system-file repair.");
+  content().innerHTML=`
+   <div class="card" style="margin-bottom:16px"><table><thead><tr>
+     <th>#</th><th>Model</th><th>Type</th><th>Temp</th><th>Wear</th><th>Hours</th><th>Read / write errors</th><th>Verdict</th></tr></thead>
+     <tbody id="sm"><tr><td colspan="8" class="empty">Reading SMART counters…</td></tr></tbody></table></div>
+   <div class="grid2">
+    <div class="card box"><h3>1 · Surface scan (read-only)</h3>
+      <div class="sectionhint">Reads every block of the disk and finds bad or slow areas. Nothing is written. Big disks take hours.</div>
+      <div class="field"><label>Disk</label><select id="s-disk"></select></div>
+      <div class="row"><button class="btn" onclick="doSurface()">Start scan</button>${stopBtn}</div></div>
+    <div class="card box"><h3>2 · File-system repair (chkdsk)</h3>
+      <div class="field"><label>Drive letter</label><input id="r-drv" value="D" maxlength="1" style="max-width:90px"></div>
+      <div class="radio">
+        <label><input type="radio" name="lvl" value="scan" checked> Scan — read-only, safe</label>
+        <label><input type="radio" name="lvl" value="fix"> Fix errors (/f)</label>
+        <label><input type="radio" name="lvl" value="full"> Fix + bad sectors (/r, slow)</label></div>
+      <button class="btn" onclick="doRepair()">Run chkdsk</button></div>
+    <div class="card box"><h3>3 · Windows system files</h3>
+      <div class="sectionhint">For a Windows that boots but is slow, crashes or has broken parts. Run DISM first, then SFC.</div>
+      <div class="row"><button class="btn" onclick="run('system_repair',['dism'],'DISM /RestoreHealth')">DISM RestoreHealth</button>
+      <button class="btn ghost" onclick="run('system_repair',['sfc'],'sfc /scannow')">SFC scannow</button></div></div>
+   </div>`;
+  const all=await getDisks();window._sd=all;
+  document.getElementById("s-disk").innerHTML=all.map((d,i)=>`<option value="${i}">Disk ${d.Number} — ${d.FriendlyName} (${GB(d.Size||0)})</option>`).join("");
+  let rows;
+  if(PREVIEW)rows=[{Id:"0",Name:"Samsung SSD 970 EVO Plus",Media:"SSD",Temp:41,Wear:3,Hours:6120,ReadErr:0,WriteErr:0,Verdict:"ok"},
+    {Id:"1",Name:"WDC WD10EZEX",Media:"HDD",Temp:47,Wear:null,Hours:31877,ReadErr:12,WriteErr:0,Verdict:"bad"}];
+  else rows=await api().smart_details();
+  const v={ok:'<span class="badge b-ok">Good</span>',warn:'<span class="badge b-warn">Watch</span>',bad:'<span class="badge b-bad">Back up now</span>'};
+  const n=x=>(x===null||x===undefined||x==="")?'<span style="color:var(--muted)">—</span>':x;
+  document.getElementById("sm").innerHTML=rows.map(r=>`<tr><td>${r.Id}</td><td class="model">${r.Name||"?"}</td>
+    <td>${r.Media||"?"}</td><td>${r.Temp?r.Temp+"°C":n(null)}</td><td>${(r.Wear!==null&&r.Wear!==undefined&&r.Wear!=="")?r.Wear+"%":n(null)}</td>
+    <td>${n(r.Hours)}</td><td>${n(r.ReadErr)} / ${n(r.WriteErr)}</td><td>${v[r.Verdict]||""}</td></tr>`).join("")
+    ||'<tr><td colspan="8" class="empty">No counters reported by this PC.</td></tr>';
+}
+function doSurface(){const d=(window._sd||[])[+document.getElementById("s-disk").value];
+  if(!d){alert("Pick a disk.");return;}
+  run("surface_test",[d.Number,d.Size],"surface read test Disk "+d.Number);}
+function doRepair(){
+  const drv=(document.getElementById("r-drv").value||"").replace(":","").slice(0,1).toUpperCase();
+  if(!/[A-Z]/.test(drv)){alert("Enter a drive letter, e.g. D.");return;}
+  const lvl=document.querySelector('input[name=lvl]:checked').value;
+  if(lvl!=="scan"&&drv==="C")appendLog("Note: C: is in use - Windows will ask to run the fix on next restart.");
+  run("chkdsk",[drv,lvl],"chkdsk "+drv+":");}
+
+/* ---- Multi-ISO (Ventoy) ---- */
+async function viewMulti(){
+  setTitle("Multi-ISO USB","One USB, many systems: Windows, Linux, WinPE, tools — pick from a boot menu (Ventoy).");
+  const rows=await usbDisks();window._mu=rows;
+  const info=PREVIEW?{exe:""}:await api().ventoy_info();
+  content().innerHTML=`
+   <div class="card box" style="margin-bottom:16px;max-width:760px">
+     <div class="row" style="justify-content:space-between">
+       <div><b>Ventoy:</b> <span class="mono" id="m-exe">${info.exe||"not found — download from ventoy.net, extract into bin\\ventoy"}</span></div>
+       <button class="btn ghost small" onclick="locateVentoy()">Locate…</button></div></div>
+   <div class="grid2" style="max-width:980px">
+    <div class="card box"><h3>1 · Prepare the USB (once)</h3>
+      <div class="field"><label>USB disk</label><select id="m-disk">${diskOpts(rows)}</select></div>
+      <label class="switch"><input type="checkbox" id="m-gpt"> GPT (newer PCs only — leave off for old + new PCs)</label>
+      <label class="switch"><input type="checkbox" id="m-sb" checked> Secure Boot support</label>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" onclick="doVentoy('I')">Install (erase USB)</button>
+        <button class="btn ghost" onclick="doVentoy('U')">Update (keep files)</button></div></div>
+    <div class="card box"><h3>2 · Add ISO files</h3>
+      <div class="sectionhint">Pick as many as you like. They're copied as-is — no extracting.</div>
+      <div class="row"><button class="btn" onclick="addIsos()">Choose ISOs & copy</button>
+        <button class="btn ghost" onclick="listIsos()">What's on the USB?</button></div>
+      <div id="m-list" style="margin-top:12px"></div></div>
+   </div>`;
+}
+const muDisk=()=>(window._mu||[])[+document.getElementById("m-disk").value];
+async function locateVentoy(){if(PREVIEW)return;const p=await api().ventoy_locate();
+  if(p)document.getElementById("m-exe").textContent=p;else appendLog("[X] Pick the file named Ventoy2Disk.exe.");}
+function doVentoy(mode){const d=muDisk();if(!d){alert("Pick a USB disk.");return;}
+  if(mode==="I"&&!confirmDisk(d,"Install Ventoy (multi-ISO)."))return;
+  run("ventoy_install",[d.Number,mode,document.getElementById("m-gpt").checked,document.getElementById("m-sb").checked],
+    "Ventoy2Disk.exe VTOYCLI /"+mode+" /PhyDrive:"+d.Number);}
+async function addIsos(){const d=muDisk();if(!d){alert("Pick the Ventoy USB.");return;}
+  if(PREVIEW){appendLog("> robocopy *.iso (preview)");return;}
+  const f=await api().choose_files();if(!f.length)return;
+  run("ventoy_add",[d.Number,f]);}
+async function listIsos(){const d=muDisk();if(!d)return;
+  const l=PREVIEW?[{name:"Win11_24H2.iso",size:5.8e9},{name:"ubuntu-24.04.iso",size:6.1e9}]:await api().ventoy_list(d.Number);
+  document.getElementById("m-list").innerHTML=l.length?'<div class="card"><table><tbody>'+
+    l.map(x=>`<tr><td>${x.name}</td><td style="text-align:right">${GB(x.size)}</td></tr>`).join("")+'</tbody></table></div>'
+    :'<div class="empty">No images on the USB yet (or it is not a Ventoy USB).</div>';}
+
+/* ---- Write IMG ---- */
+async function viewImg(){
+  setTitle("Write IMG / Linux USB","Write a raw image byte-for-byte (Linux ISO, rescue images, Raspberry Pi .img).");
+  const rows=await usbDisks();window._im=rows;
+  content().innerHTML=`<div class="warnbox">⚠ The whole USB is overwritten. For Windows ISOs use “Windows USB” instead.</div>
+   <div class="field"><label>Image file</label><div class="pathrow"><input id="i-file"><button class="btn ghost" onclick="pickAny('i-file','img')">Browse</button></div></div>
+   <div class="field"><label>USB disk</label><select id="i-disk">${diskOpts(rows)}</select></div>
+   <div class="row"><button class="btn" onclick="doImg()">Write image</button>${stopBtn}</div>`;
+}
+function doImg(){const d=(window._im||[])[+document.getElementById("i-disk").value],f=document.getElementById("i-file").value;
+  if(!d||!f){alert("Choose an image and a USB disk.");return;}
+  if(!confirmDisk(d,"Write raw image."))return;run("write_image",[f,d.Number],"write \\\\.\\PhysicalDrive"+d.Number);}
+
+/* ---- Partition tools ---- */
+function viewPart(){
+  setTitle("Partition tools","Format one partition only, or eject a drive safely.");
+  content().innerHTML=`<div class="field"><label>Drive letter</label><input id="pt-drv" value="E" maxlength="1" style="max-width:90px"></div>
+   <div class="field"><label>Filesystem</label><select id="pt-fs">${FS.map(x=>`<option>${x}</option>`).join("")}</select></div>
+   <div class="field"><label>Label</label><input id="pt-label" value="DATA" maxlength="32"></div>
+   <div class="row"><button class="btn" onclick="doPart('format')">Format this partition</button>
+   <button class="btn ghost" onclick="doPart('eject')">Eject</button></div>`;
+}
+function doPart(mode){const drv=(document.getElementById("pt-drv").value||"").replace(":","").slice(0,1).toUpperCase();
+  if(!/[A-Z]/.test(drv)){alert("Enter a drive letter.");return;}
+  if(drv==="C"){alert("C: is the Windows drive.");return;}
+  if(mode==="format"){const t=prompt(`ALL DATA on ${drv}: will be erased.\nType ${drv} to confirm:`);
+    if(t===null||t.trim().toUpperCase()!==drv){appendLog("Cancelled.");return;}
+    run("format_volume",[drv,document.getElementById("pt-fs").value,document.getElementById("pt-label").value||"DATA"],"Format-Volume "+drv);}
+  else run("eject",[drv],"eject "+drv);}
+
+/* ---- Memory test ---- */
+async function viewRam(){
+  setTitle("Memory test","Windows Memory Diagnostic — runs before Windows loads, then shows the result here.");
+  content().innerHTML=`<div class="warnbox" style="font-size:13px"><b>⚠ The PC restarts right away</b> and tests the RAM before Windows loads (a few minutes). Save your work first.
+     After Windows starts again, open this page to see the result.</div>
+   <button class="btn" onclick="doRam()">Restart & test RAM now</button>
+   <h3 style="font-size:14.5px;margin:22px 0 10px">Last results</h3>
+   <div class="card"><table><thead><tr><th>Date</th><th>Result</th><th>Details</th></tr></thead>
+   <tbody id="mt"><tr><td colspan="3" class="empty">Reading…</td></tr></tbody></table></div>`;
+  const r=PREVIEW?[{time:"2026-11-18 21:40",result:"pass",msg:"The Windows Memory Diagnostic tested the computer's memory and detected no errors"}]:await api().memtest_results();
+  const b={pass:'<span class="badge b-ok">No errors</span>',fail:'<span class="badge b-bad">RAM errors — replace</span>',info:'<span class="tag">info</span>'};
+  document.getElementById("mt").innerHTML=r.map(x=>`<tr><td>${x.time}</td><td>${b[x.result]}</td><td style="color:var(--muted)">${x.msg}</td></tr>`).join("")
+    ||'<tr><td colspan="3" class="empty">No memory test has run on this PC yet.</td></tr>';
+}
+function doRam(){const t=prompt('This will RESTART the PC now.\nType RESTART to confirm:');
+  if(t===null||t.trim().toUpperCase()!=="RESTART"){appendLog("Cancelled.");return;}
+  run("ram_test",[],"bcdedit /bootsequence {memdiag} + shutdown /r");}
+
+/* ---- Startup apps ---- */
+async function viewStartup(){
+  setTitle("Startup apps","Stop programs from starting with Windows — same switch as Task Manager, fully reversible.");
+  content().innerHTML=`<div class="row" style="margin-bottom:14px"><button class="btn" onclick="viewStartup()">Refresh</button>
+     <button class="btn ghost" onclick="stopAll()">Disable all (except security)</button></div>
+   <div class="card"><table><thead><tr><th>Program</th><th>Command</th><th>From</th><th>Status</th><th></th></tr></thead>
+   <tbody id="st"><tr><td colspan="5" class="empty">Reading…</td></tr></tbody></table></div>`;
+  const l=PREVIEW?[{id:"hkcu|OneDrive",name:"OneDrive",cmd:'"C:\\Users\\x\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive.exe" /background',where:"User",enabled:true},
+    {id:"hklm|SecurityHealth",name:"SecurityHealth",cmd:"%windir%\\system32\\SecurityHealthSystray.exe",where:"All users",enabled:true},
+    {id:"hkcu|Discord",name:"Discord",cmd:"Update.exe --processStart Discord.exe",where:"User",enabled:false}]
+    :await api().startup_list();
+  window._st=l;
+  document.getElementById("st").innerHTML=l.map((x,i)=>`<tr><td class="model">${x.name}</td>
+    <td><div class="mono" title="${x.cmd.replace(/"/g,"&quot;")}">${x.cmd.replace(/</g,"&lt;")}</div></td>
+    <td style="color:var(--muted);font-size:12.5px;white-space:nowrap">${x.where}</td>
+    <td>${x.enabled?'<span class="badge b-ok">Enabled</span>':'<span class="badge b-warn">Disabled</span>'}</td>
+    <td><button class="btn ghost small keep" onclick="toggleSt(${i})">${x.enabled?"Disable":"Enable"}</button></td></tr>`).join("")
+    ||'<tr><td colspan="5" class="empty">Nothing starts with Windows.</td></tr>';
+}
+const KEEP=/securityhealth|defender|windowsdefender|realtek|synaptics|elan|igfx|nvidia|amd|rtkaud/i;
+async function toggleSt(i){const x=window._st[i];if(PREVIEW){x.enabled=!x.enabled;appendLog("> StartupApproved "+x.name+" (preview)");}
+  else await api().startup_set(x.id,!x.enabled);viewStartup();}
+async function stopAll(){const l=(window._st||[]).filter(x=>x.enabled&&!KEEP.test(x.name+" "+x.cmd));
+  if(!l.length){appendLog("Nothing to disable.");return;}
+  if(!confirm("Disable "+l.length+" startup app(s)?\n\n"+l.map(x=>"• "+x.name).join("\n")+"\n\nAntivirus, touchpad, sound and graphics drivers are kept."))return;
+  for(const x of l){if(PREVIEW)appendLog("> disable "+x.name+" (preview)");else await api().startup_set(x.id,false);}
+  viewStartup();}
+
+/* ---- Drivers ---- */
+function viewDrivers(){
+  setTitle("Drivers backup & restore","Save all drivers before a reinstall, put them back after.");
+  content().innerHTML=`<div class="sectionhint">Backup saves every third-party driver on this PC (DISM). Restore installs them on matching devices (pnputil).</div>
+   <div class="field"><label>Folder</label><div class="pathrow"><input id="d-folder" value="D:\\DriversBackup"><button class="btn ghost" onclick="pickDir('d-folder')">Browse</button></div></div>
+   <div class="row"><button class="btn" onclick="doDrv('backup')">Back up drivers</button>
+   <button class="btn ghost" onclick="doDrv('restore')">Restore from folder</button></div>`;
+}
+function doDrv(m){const f=document.getElementById("d-folder").value;if(!f){alert("Choose a folder.");return;}
+  m==="backup"?run("export_drivers",[f],"dism /online /export-driver"):run("import_drivers",[f],"pnputil /add-driver /subdirs /install");}
+
+/* ---- Right-click menu ---- */
+function viewMenu(){
+  setTitle("Right-click menu","Open Disk Tool straight from a drive's right-click menu in Explorer.");
+  content().innerHTML=`<div class="sectionhint">Adds “Disk Tool: Format”, “Fast Copy” and “Repair” when you right-click a drive.
+     On Windows 11 they're under “Show more options”.</div>
+   <div class="row"><button class="btn" onclick="run('menu_install',[],'reg add HKCU\\\\...\\\\Drive\\\\shell')">Add to menu</button>
+   <button class="btn ghost" onclick="run('menu_remove',[],'reg delete')">Remove</button></div>`;
+}
+async function pickFile(id){if(PREVIEW)return;const p=await window.pywebview.api.choose_file();if(p)document.getElementById(id).value=p;}
+
+async function start(){
+  PREVIEW=!(window.pywebview&&window.pywebview.api);
+  let goto="disks";
+  if(!PREVIEW){try{const i=await api().start_info();if(i.goto)goto=i.goto;
+    document.getElementById("ver").textContent="v"+i.version;}catch(e){}}
+  go(goto);
+}
+nav();
+let started=false;
+function once(){if(!started){started=true;start();}}
+window.addEventListener("pywebviewready",()=>{if(started&&PREVIEW)start();else once();});
+setTimeout(()=>{if(window.pywebview&&window.pywebview.api)once();else setTimeout(once,1200);},300);
+</script>
+</body>
+</html>

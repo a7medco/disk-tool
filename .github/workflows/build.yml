@@ -1,0 +1,51 @@
+name: Build DiskTool.exe
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: python -m pip install --upgrade pip pyinstaller pywebview
+
+      - name: Build exe
+        run: >
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --uac-admin
+          --name DiskTool --icon DiskTool.ico
+          --add-data "web;web" --add-data "redist;redist"
+          app.py
+
+      - name: Make the release folder
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release\DiskTool | Out-Null
+          Copy-Item dist\DiskTool.exe release\DiskTool\
+          Copy-Item bin release\DiskTool\bin -Recurse
+          Compress-Archive -Path release\DiskTool -DestinationPath DiskTool.zip -Force
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: DiskTool
+          path: release/DiskTool
+
+      - name: Publish as the "latest" release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag
+          if ($LASTEXITCODE -ne 0) { Write-Host "No old release - first build." }
+          gh release create latest DiskTool.zip --title "Disk Tool (latest build)" --notes "Download DiskTool.zip, extract, double-click DiskTool.exe."
