@@ -161,3 +161,74 @@ def windows_to_go(src, index, disk_number, log, stop=None):
     log("[OK] Windows To Go is ready. Boot any PC from this USB "
         "(first start takes a few minutes while Windows sets up the hardware).")
     return 0
+
+
+# ------------------------------------------- Install Windows to a disk ----
+# WinNTSetup-style: prepare an (external) SSD/HDD that will go inside a PC.
+# Layouts follow Microsoft's "UEFI/GPT-based hard drive partitions" and
+# "BIOS/MBR-based hard drive partitions" docs.
+def install_to_disk(src, index, disk_number, scheme, drivers, compact, log, stop=None):
+    letters = _free_letters(2)
+    if not letters:
+        log("[X] Not enough free drive letters.")
+        return 1
+    S, W = letters
+    if scheme == "mbr":
+        log("1/5  Partitioning Disk %s - MBR / Legacy BIOS" % disk_number)
+        script = ("select disk %s\nclean\nconvert mbr\n"
+                  "create partition primary size=100\nformat quick fs=ntfs label=System\n"
+                  "assign letter=%s\nactive\n"
+                  "create partition primary\nformat quick fs=ntfs label=Windows\n"
+                  "assign letter=%s\nexit\n" % (disk_number, S, W))
+        fw = "BIOS"
+    else:
+        log("1/5  Partitioning Disk %s - GPT / UEFI" % disk_number)
+        script = ("select disk %s\nclean\nconvert gpt\n"
+                  "create partition efi size=260\nformat quick fs=fat32 label=System\n"
+                  "assign letter=%s\n"
+                  "create partition msr size=16\n"
+                  "create partition primary\nformat quick fs=ntfs label=Windows\n"
+                  "assign letter=%s\nexit\n" % (disk_number, S, W))
+        fw = "UEFI"
+    if diskpart_stream(script, log) != 0:
+        return 1
+
+    img, iso = _image_from_source(src, log)
+    if not img:
+        return 1
+    try:
+        log("2/5  Applying Windows (edition %s)%s..." % (index, " as Compact OS" if compact else ""))
+        args = ["dism", "/Apply-Image", "/ImageFile:" + img, "/Index:%s" % index,
+                "/ApplyDir:%s:\\" % W]
+        if compact:
+            args.append("/Compact")
+        if run_stream(args, log) != 0:
+            log("[X] DISM could not apply the image.")
+            return 1
+    finally:
+        if iso:
+            _ps_lines("Dismount-DiskImage -ImagePath '%s'" % iso.replace("'", "''"))
+
+    if drivers:
+        if os.path.isdir(drivers):
+            log("3/5  Adding drivers from %s ..." % drivers)
+            run_stream(["dism", "/Image:%s:\\" % W, "/Add-Driver",
+                        "/Driver:" + drivers, "/Recurse"], log)
+        else:
+            log("[!] Drivers folder not found - skipped.")
+    else:
+        log("3/5  No drivers folder - skipped.")
+
+    log("4/5  Writing %s boot files to the new disk (this PC's boot is not touched)..." % fw)
+    bcd = os.path.join(W + ":\\Windows", "System32", "bcdboot.exe")
+    if not os.path.isfile(bcd):
+        bcd = "bcdboot"
+    if run_stream([bcd, W + ":\\Windows", "/s", S + ":", "/f", fw], log) != 0:
+        log("[X] bcdboot failed.")
+        return 1
+
+    log("5/5  Removing the temporary letter of the boot partition...")
+    diskpart_stream("select volume %s\nremove letter=%s\nexit\n" % (S, S), log)
+    log("[OK] Done. Put this disk inside the PC and boot it in %s mode - Windows finishes "
+        "setting up and shows the welcome screen." % ("UEFI" if fw == "UEFI" else "Legacy/CSM"))
+    return 0

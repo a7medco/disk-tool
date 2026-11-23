@@ -17,7 +17,7 @@ sys.path.insert(0, HERE)
 
 from core import deploy, health, paths, settings, startup, sysinfo, system, ventoy, winops   # noqa: E402
 
-VERSION = "2.4"
+VERSION = "2.5"
 
 
 class Api:
@@ -202,6 +202,10 @@ class Api:
     def wtg_create(self, src, index, number):
         self._bg(lambda: deploy.windows_to_go(src, index, number, self._emit, self._stop)); return True
 
+    def install_to_disk(self, src, index, number, scheme, drivers, compact):
+        self._bg(lambda: deploy.install_to_disk(src, index, number, scheme, drivers, bool(compact),
+                                                self._emit, self._stop)); return True
+
     # ---- battery & license ----
     def battery(self):
         return sysinfo.battery()
@@ -239,10 +243,18 @@ def main():
         i = sys.argv.index("--goto")
         goto = sys.argv[i + 1] if i + 1 < len(sys.argv) else ""
     api = Api(goto)
+    w, h = 1080, 720
+    try:                                    # open at ~80% of the screen, never bigger
+        sc = webview.screens() if callable(webview.screens) else webview.screens
+        if sc:
+            w = max(860, min(1180, int(sc[0].width * 0.80)))
+            h = max(560, min(780, int(sc[0].height * 0.82)))
+    except Exception:
+        pass
     window = webview.create_window(
         "Disk Tool %s  -  Abuzaid   |   صدقة جارية على روح زينب عبد العليم مصطفى رحمها الله" % VERSION,
         os.path.join(paths.RES, "web", "index.html"),
-        js_api=api, width=1080, height=740, min_size=(900, 620))
+        js_api=api, width=w, height=h, min_size=(820, 540))
     api._window = window
     webview.start()
 
