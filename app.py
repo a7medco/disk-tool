@@ -17,7 +17,7 @@ sys.path.insert(0, HERE)
 
 from core import deploy, health, paths, settings, startup, sysinfo, system, ventoy, winops   # noqa: E402
 
-VERSION = "2.5"
+VERSION = "2.5.1"
 
 
 class Api:
@@ -145,6 +145,17 @@ class Api:
 
     def write_image(self, img, number):
         self._bg(lambda: winops.write_image(img, number, self._emit, self._stop)); return True
+
+    def save_image(self, number, size, path):
+        self._bg(lambda: winops.save_image(number, size, path, self._emit, self._stop)); return True
+
+    def choose_save(self, name):
+        import webview
+        res = self._window.create_file_dialog(webview.SAVE_DIALOG, save_filename=name,
+                                              file_types=("Disk image (*.img)",))
+        if not res:
+            return ""
+        return res if isinstance(res, str) else res[0]
 
     def format_volume(self, letter, fs, label):
         self._bg(lambda: winops.format_volume(letter, fs, label, self._emit)); return True

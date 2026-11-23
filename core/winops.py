@@ -413,3 +413,52 @@ def remove_context_menu(log):
         run_stream(["reg", "delete", MENU_BASE + "\\DiskTool" + key, "/f"], log)
     log("[OK] Removed.")
     return 0
+
+
+def save_image(disk_number, size_bytes, out_path, log, stop=None):
+    """Back up a whole disk/USB to a raw .img file (reverse of write_image). Read-only on the disk."""
+    import shutil
+    total = int(size_bytes)
+    out_dir = _osp.dirname(_osp.abspath(out_path)) or "."
+    if not _osp.isdir(out_dir):
+        log("[X] Folder not found: %s" % out_dir)
+        return 1
+    letters = [str(r.get("DriveLetter") or "").upper() for r in ps_json(
+        "Get-Partition -DiskNumber %d -ErrorAction SilentlyContinue | Select-Object DriveLetter"
+        % int(disk_number))]
+    if _osp.splitdrive(_osp.abspath(out_path))[0][:1].upper() in [L for L in letters if L]:
+        log("[X] You can't save the image onto the same disk you are copying.")
+        return 1
+    free = shutil.disk_usage(out_dir).free
+    if free < total:
+        log("[X] Not enough space: need %d GB, free %d GB." % (total // 10**9 + 1, free // 10**9))
+        return 1
+    block = 4 * 1024 * 1024
+    done, last, t0 = 0, -1, _time.time()
+    log("Copying Disk %s (%d GB) to %s ..." % (disk_number, total // 10**9, out_path))
+    try:
+        with open(r"\\.\PhysicalDrive%s" % disk_number, "rb", buffering=0) as src, \
+                open(out_path, "wb") as dst:
+            while done < total:
+                if stop is not None and stop.is_set():
+                    log("[X] Stopped by user - the .img file is incomplete.")
+                    return 1
+                n = min(block, total - done)
+                n -= n % 512
+                if n <= 0:
+                    break
+                buf = src.read(n)
+                if not buf:
+                    break
+                dst.write(buf)
+                done += len(buf)
+                pct = done * 100 // max(total, 1)
+                if pct // 2 != last:
+                    last = pct // 2
+                    sp = done / max(_time.time() - t0, 0.001) / 1e6
+                    log("  %d%%  |  %.0f MB/s  |  left ~%d min" % (pct, sp, (total - done) / max(sp * 1e6, 1) // 60))
+    except OSError as e:
+        log("[X] Read/write error at %d MB: %s" % (done >> 20, e))
+        return 1
+    log("[OK] Saved %d MB to %s. Restore it later with 'Write image'." % (done >> 20, out_path))
+    return 0

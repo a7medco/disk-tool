@@ -143,7 +143,7 @@
 </head>
 <body>
   <header class="top">
-    <div><h1>Disk Tool</h1><p>Windows service toolkit · Version <span id="ver">2.5</span></p></div>
+    <div><h1>Disk Tool</h1><p>Windows service toolkit · Version <span id="ver">2.5.1</span></p></div>
     <div class="brandmark">
       <div class="emblem">A</div><div class="wordmark">ABUZAID</div>
       <button class="themebtn" id="themebtn" onclick="toggleTheme()">☀ Light</button>
@@ -182,7 +182,7 @@ const VIEWS=[
   {grp:"Bootable"},
   {id:"usb",     name:"Windows USB",        ic:"▸", fn:viewUSB},
   {id:"multi",   name:"Multi-ISO USB",      ic:"❖", fn:viewMulti},
-  {id:"img",     name:"Write IMG / Linux",  ic:"◈", fn:viewImg},
+  {id:"img",     name:"IMG write / save",   ic:"◈", fn:viewImg},
   {id:"wtg",     name:"Windows To Go",      ic:"⇪", fn:viewWtg},
   {id:"inst",    name:"Install to disk",    ic:"⤓", fn:viewInst},
   {grp:"Windows"},
@@ -509,13 +509,31 @@ async function listIsos(){const d=muDisk();if(!d)return;
 
 /* ---- Write IMG ---- */
 async function viewImg(){
-  setTitle("Write IMG / Linux USB","Write a raw image byte-for-byte (Linux ISO, rescue images, Raspberry Pi .img).");
+  setTitle("IMG — write / save","Write an image to a USB, or save a whole drive to an .img backup.");
   const rows=await usbDisks();window._im=rows;
-  content().innerHTML=`<div class="warnbox">⚠ The whole USB is overwritten. For Windows ISOs use “Windows USB” instead.</div>
-   <div class="field"><label>Image file</label><div class="pathrow"><input id="i-file"><button class="btn ghost" onclick="pickAny('i-file','img')">Browse</button></div></div>
-   <div class="field"><label>USB disk</label><select id="i-disk">${diskOpts(rows)}</select></div>
-   <div class="row"><button class="btn" onclick="doImg()">Write image</button>${stopBtn}</div>`;
+  content().innerHTML=`<div class="grid2" style="max-width:1000px">
+   <div class="card box"><h3>Write image → USB</h3>
+     <div class="sectionhint">Linux ISO, rescue image, Raspberry Pi .img, or an .img you saved before. Erases the USB.</div>
+     <div class="field"><label>Image file</label><div class="pathrow"><input id="i-file"><button class="btn ghost" onclick="pickAny('i-file','img')">Browse</button></div></div>
+     <div class="field"><label>USB disk</label><select id="i-disk">${diskOpts(rows)}</select></div>
+     <div class="row"><button class="btn" onclick="doImg()">Write image</button>${stopBtn}</div></div>
+   <div class="card box"><h3>Save drive → IMG (backup)</h3>
+     <div class="sectionhint">Copies the whole drive, sector by sector, to one .img file. Nothing on the drive is changed.
+       The file is as big as the drive.</div>
+     <div class="field"><label>Drive to save</label><select id="s-disk">${diskOpts(rows)}</select></div>
+     <div class="field"><label>Save as</label><div class="pathrow"><input id="s-out" placeholder="D:\\Backups\\flash.img">
+       <button class="btn ghost" onclick="pickSave()">Browse</button></div></div>
+     <div class="row"><button class="btn" onclick="doSave()">Save to IMG</button>${stopBtn}</div></div>
+  </div>`;
 }
+async function pickSave(){const d=(window._im||[])[+document.getElementById("s-disk").value];
+  const name=d?(d.FriendlyName||"disk").replace(/[^\w-]+/g,"_")+".img":"disk.img";
+  if(PREVIEW){document.getElementById("s-out").value="D:\\Backups\\"+name;return;}
+  const p=await api().choose_save(name);if(p)document.getElementById("s-out").value=p;}
+function doSave(){const d=(window._im||[])[+document.getElementById("s-disk").value],o=document.getElementById("s-out").value.trim();
+  if(!d){alert("Connect the drive by USB.");return;}
+  if(!o){alert("Choose where to save the .img file.");return;}
+  run("save_image",[d.Number,d.Size,o.toLowerCase().endsWith(".img")?o:o+".img"],"read \\\\.\\PhysicalDrive"+d.Number+" -> "+o);}
 function doImg(){const d=(window._im||[])[+document.getElementById("i-disk").value],f=document.getElementById("i-file").value;
   if(!d||!f){alert("Choose an image and a USB disk.");return;}
   if(!confirmDisk(d,"Write raw image."))return;run("write_image",[f,d.Number],"write \\\\.\\PhysicalDrive"+d.Number);}
