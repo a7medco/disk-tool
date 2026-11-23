@@ -15,9 +15,9 @@ import threading
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from core import health, paths, startup, system, ventoy, winops   # noqa: E402
+from core import health, paths, startup, sysinfo, system, ventoy, winops   # noqa: E402
 
-VERSION = "2.2"
+VERSION = "2.3"
 
 
 class Api:
@@ -183,6 +183,13 @@ class Api:
 
     def ventoy_list(self, number):
         return ventoy.list_isos(number)
+
+    # ---- battery & license ----
+    def battery(self):
+        return sysinfo.battery()
+
+    def license_info(self):
+        return sysinfo.license_info()
 
     # ---- startup apps ----
     def startup_list(self):

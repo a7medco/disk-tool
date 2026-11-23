@@ -127,7 +127,7 @@
   <aside class="side">
     <div class="brand">
       <div class="logo">A</div>
-      <div><h1>Disk Tool</h1><p>by Abuzaid · <span id="ver">v2.2</span></p></div>
+      <div><h1>Disk Tool</h1><p>by Abuzaid · <span id="ver">v2.3</span></p></div>
     </div>
     <nav class="nav" id="nav"></nav>
     <div class="dedic" dir="rtl">
@@ -163,6 +163,8 @@ const VIEWS=[
   {id:"img",     name:"Write IMG / Linux",  ic:"◈", fn:viewImg},
   {grp:"Windows"},
   {id:"ram",     name:"Memory test",        ic:"▦", fn:viewRam},
+  {id:"battery", name:"Battery health",     ic:"▮", fn:viewBattery},
+  {id:"license", name:"Windows license",    ic:"⚿", fn:viewLicense},
   {id:"startup", name:"Startup apps",       ic:"⏻", fn:viewStartup},
   {id:"drivers", name:"Drivers backup",     ic:"❏", fn:viewDrivers},
   {id:"locks",   name:"Device locks",       ic:"⬚", fn:viewLocks},
@@ -571,6 +573,53 @@ function viewMenu(){
    <div class="row"><button class="btn" onclick="run('menu_install',[],'reg add HKCU\\\\...\\\\Drive\\\\shell')">Add to menu</button>
    <button class="btn ghost" onclick="run('menu_remove',[],'reg delete')">Remove</button></div>`;
 }
+
+/* ---- Battery health ---- */
+async function viewBattery(){
+  setTitle("Battery health","How much of the original capacity the battery still holds.");
+  content().innerHTML='<div class="empty">Reading the battery…</div>';
+  const l=PREVIEW?[{Name:"DELL 7FHHV",Maker:"SMP",Serial:"1234",Design:51000,Full:38760,Cycles:212,Charge:87,Health:76,Verdict:"warn"}]:await api().battery();
+  if(!l.length){content().innerHTML='<div class="empty">No battery found (desktop PC, or the battery is not detected).</div>';return;}
+  const col={ok:"var(--good)",warn:"#d9902f",bad:"var(--bad)","?":"var(--muted)"};
+  const txt={ok:"Good",warn:"Worn — still usable",bad:"Replace the battery","?":"Not reported"};
+  content().innerHTML=l.map(b=>`<div class="card box" style="max-width:640px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:22px">
+      <div style="font-size:54px;font-weight:750;color:${col[b.Verdict]};min-width:130px">${b.Health===null?"—":b.Health+"%"}</div>
+      <div><div style="font-weight:650;font-size:15px;color:${col[b.Verdict]}">${txt[b.Verdict]}</div>
+        <div style="color:var(--muted);font-size:13px;margin-top:4px">${(b.Name||"Battery").trim()} · ${(b.Maker||"").trim()}</div></div></div>
+    <div style="height:10px;background:var(--line);border-radius:6px;margin:16px 0 12px;overflow:hidden">
+      <div style="height:100%;width:${Math.min(100,b.Health||0)}%;background:${col[b.Verdict]}"></div></div>
+    <table><tbody>
+      <tr><td>Design capacity (new)</td><td style="text-align:right">${b.Design?b.Design.toLocaleString()+" mWh":"—"}</td></tr>
+      <tr><td>Full charge now</td><td style="text-align:right">${b.Full?b.Full.toLocaleString()+" mWh":"—"}</td></tr>
+      <tr><td>Charge cycles</td><td style="text-align:right">${b.Cycles||"—"}</td></tr>
+      <tr><td>Current charge</td><td style="text-align:right">${b.Charge!=null?b.Charge+"%":"—"}</td></tr>
+    </tbody></table></div>`).join("")+
+    '<div class="sectionhint">80%+ good · 60–79% worn · under 60% replace. Some laptops report wrong numbers; charge to 100% once for an accurate reading.</div>';
+}
+
+/* ---- Windows license ---- */
+async function viewLicense(){
+  setTitle("Windows license","The key stored in the BIOS by the maker, and the key Windows is using now.");
+  content().innerHTML='<div class="empty">Reading…</div>';
+  const i=PREVIEW?{bios_key:"ABCDE-FGHIJ-KLMNO-PQRST-UVWXY",bios_desc:"[4.0] Professional OEM:DM",edition:"Microsoft Windows 11 Pro",build:"10.0.26100 (26100)",partial:"UVWXY",channel:"OEM:DM",status:"Activated"}:await api().license_info();
+  const ok=i.status==="Activated";
+  content().innerHTML=`<div class="card box" style="max-width:720px;margin-bottom:16px"><h3>Key in the BIOS (from the factory)</h3>
+     ${i.bios_key?`<div class="row"><div id="bk" style="font-family:Consolas,monospace;font-size:21px;font-weight:700;letter-spacing:1px">${i.bios_key}</div>
+       <button class="btn ghost small keep" onclick="copyKey()">Copy</button></div>
+       <div style="color:var(--muted);font-size:12.5px;margin-top:6px">${i.bios_desc}</div>`
+     :'<div class="empty" style="padding:6px 0">No key stored in this BIOS (normal for PCs bought without Windows, or very old models).</div>'}</div>
+   <div class="card box" style="max-width:720px"><h3>Windows on this PC</h3><table><tbody>
+     <tr><td>Edition</td><td>${i.edition}</td></tr>
+     <tr><td>Version</td><td>${i.build}</td></tr>
+     <tr><td>Installed key</td><td style="font-family:Consolas,monospace">${i.partial?"XXXXX-XXXXX-XXXXX-XXXXX-"+i.partial:"—"}</td></tr>
+     <tr><td>Channel</td><td>${i.channel||"—"}</td></tr>
+     <tr><td>Status</td><td>${ok?'<span class="badge b-ok">Activated</span>':'<span class="badge b-bad">'+i.status+'</span>'}</td></tr>
+   </tbody></table>
+   <div class="sectionhint" style="margin-top:10px">Windows only keeps the last 5 characters of the installed key — the full key can't be read back.</div></div>`;
+}
+function copyKey(){const t=document.getElementById("bk").textContent;
+  navigator.clipboard.writeText(t).then(()=>appendLog("[OK] Key copied."),()=>appendLog("[X] Copy failed - select the key and press Ctrl+C."));}
 async function pickFile(id){if(PREVIEW)return;const p=await window.pywebview.api.choose_file();if(p)document.getElementById(id).value=p;}
 
 async function start(){
