@@ -15,9 +15,9 @@ import threading
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from core import health, paths, startup, sysinfo, system, ventoy, winops   # noqa: E402
+from core import deploy, health, paths, settings, startup, sysinfo, system, ventoy, winops   # noqa: E402
 
-VERSION = "2.3.2"
+VERSION = "2.4"
 
 
 class Api:
@@ -76,7 +76,8 @@ class Api:
         import webview
         types = {"iso": ("ISO (*.iso)", "All files (*.*)"),
                  "img": ("Disk images (*.img;*.iso;*.bin;*.raw)", "All files (*.*)"),
-                 "exe": ("Ventoy2Disk (Ventoy2Disk.exe)", "Programs (*.exe)")}[kind]
+                 "exe": ("Ventoy2Disk (Ventoy2Disk.exe)", "Programs (*.exe)"),
+                 "win": ("Windows image (*.iso;*.wim;*.esd)", "All files (*.*)")}[kind]
         res = self._window.create_file_dialog(webview.OPEN_DIALOG, file_types=types)
         return res[0] if res else ""
 
@@ -88,7 +89,11 @@ class Api:
         return list(res) if res else []
 
     def start_info(self):
-        return {"goto": self._goto, "version": VERSION}
+        return {"goto": self._goto, "version": VERSION, "theme": settings.get("theme", "dark")}
+
+    def set_theme(self, theme):
+        settings.put("theme", "light" if theme == "light" else "dark")
+        return True
 
     def stop(self):
         self._stop.set()
@@ -186,6 +191,16 @@ class Api:
 
     def ventoy_list(self, number):
         return ventoy.list_isos(number)
+
+    # ---- OOBE & Windows To Go ----
+    def sysprep(self, generalize, after):
+        self._bg(lambda: deploy.sysprep_oobe(bool(generalize), after, self._emit)); return True
+
+    def wtg_editions(self, src):
+        return deploy.list_editions(src)
+
+    def wtg_create(self, src, index, number):
+        self._bg(lambda: deploy.windows_to_go(src, index, number, self._emit, self._stop)); return True
 
     # ---- battery & license ----
     def battery(self):

@@ -23,12 +23,12 @@ jobs:
 
       - name: Smoke test on real Windows (disks, license, battery, startup)
         run: >
-          python -c "import time;from core import winops,sysinfo,startup,health;
+          python -c "import time;from core import winops,sysinfo,startup,health,deploy,settings;
           t=time.time();d=winops.list_disks();print('DISKS',round(time.time()-t,1),'s',d);
           assert d, 'no disks read';
           print('LICENSE',sysinfo.license_info());print('BATTERY',sysinfo.battery());
           print('STARTUP',len(startup.list_items()));print('SMART',health.smart_details());
-          print('MEMTEST',winops.memtest_results())"
+          print('MEMTEST',winops.memtest_results());print('SYSPREP',deploy._sysprep_exe());print('LETTERS',deploy._free_letters(2))"
 
       - name: Build exe
         run: >
