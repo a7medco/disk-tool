@@ -21,14 +21,29 @@ jobs:
       - name: Install build tools
         run: python -m pip install --upgrade pip pyinstaller "pywebview==6.2.1"
 
+      - name: Get wimlib (Windows imaging tool, LGPL) into bin\wimlib
+        shell: pwsh
+        run: |
+          $v = "1.14.5"
+          Invoke-WebRequest "https://wimlib.net/downloads/wimlib-$v-windows-x86_64-bin.zip" -OutFile wimlib.zip
+          Expand-Archive wimlib.zip -DestinationPath wl -Force
+          New-Item -ItemType Directory -Force bin\wimlib | Out-Null
+          Get-ChildItem wl -Recurse -Include *.exe,*.dll,COPYING*,README* | Copy-Item -Destination bin\wimlib
+          & bin\wimlib\wimlib-imagex.exe --version
+          if ($LASTEXITCODE -ne 0) { throw "wimlib not working" }
+          & bin\wimlib\wimlib-imagex.exe capture core test.esd "test" --solid
+          if ($LASTEXITCODE -ne 0) { throw "wimlib ESD capture failed" }
+          & bin\wimlib\wimlib-imagex.exe info test.esd
+          Remove-Item test.esd
+
       - name: Smoke test on real Windows (disks, license, battery, startup)
         run: >
-          python -c "import time;from core import winops,sysinfo,startup,health,deploy,settings;
+          python -c "import time;from core import winops,sysinfo,startup,health,deploy,settings,capture;
           t=time.time();d=winops.list_disks();print('DISKS',round(time.time()-t,1),'s',d);
           assert d, 'no disks read';
           print('LICENSE',sysinfo.license_info());print('BATTERY',sysinfo.battery());
           print('STARTUP',len(startup.list_items()));print('SMART',health.smart_details());
-          print('MEMTEST',winops.memtest_results());print('SYSPREP',deploy._sysprep_exe());print('LETTERS',deploy._free_letters(2));print('SAVEIMG',callable(winops.save_image))"
+          print('MEMTEST',winops.memtest_results());print('SYSPREP',deploy._sysprep_exe());print('LETTERS',deploy._free_letters(2));print('SAVEIMG',callable(winops.save_image));print('WINRE',capture._winre_path(print));print('SDI',capture._boot_sdi());print('UEFI',capture._is_uefi());print('BITLOCKER',capture._bitlocker_on());print('SYSPREPDIR',capture._sysprep_dir())"
 
       - name: Build exe
         run: >

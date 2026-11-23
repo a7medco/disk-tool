@@ -143,7 +143,7 @@
 </head>
 <body>
   <header class="top">
-    <div><h1>Disk Tool</h1><p>Windows service toolkit · Version <span id="ver">2.6</span></p></div>
+    <div><h1>Disk Tool</h1><p>Windows service toolkit · Version <span id="ver">2.7</span></p></div>
     <div class="brandmark">
       <div class="emblem">A</div><div class="wordmark">ABUZAID</div>
       <button class="themebtn" id="themebtn" onclick="toggleTheme()">☀ Light</button>
@@ -187,6 +187,7 @@ const VIEWS=[
   {id:"inst",    name:"Install to disk",    ic:"⤓", fn:viewInst},
   {grp:"Windows"},
   {id:"oobe",    name:"Reset to OOBE", ic:"↺", fn:viewOobe},
+  {id:"cap",     name:"Capture image",      ic:"◉", fn:viewCap},
   {id:"ram",     name:"Memory test",        ic:"▦", fn:viewRam},
   {id:"battery", name:"Battery health",     ic:"▮", fn:viewBattery},
   {id:"license", name:"Windows license",    ic:"⚿", fn:viewLicense},
@@ -758,6 +759,38 @@ function doInst(){const d=(window._in||[])[+document.getElementById("i-disk").va
   if(!d){alert("Connect the SSD/HDD by USB.");return;}
   if(!confirmDisk(d,"Install Windows ("+sch.toUpperCase()+")."))return;
   run("install_to_disk",[src,+idx,d.Number,sch,drv,cmp,rec],"dism /Apply-Image + bcdboot /f "+(sch==="gpt"?"UEFI":"BIOS"));}
+
+/* ---- Capture image ---- */
+async function viewCap(){
+  setTitle("Capture image","Save this running Windows to an .esd image on an external USB drive.");
+  content().innerHTML='<div class="empty">Checking…</div>';
+  const t=PREVIEW?[{Letter:"E",Label:"BACKUP",FS:"NTFS",Size:1e12,Free:7.2e11}]:await api().capture_targets();
+  const info=PREVIEW?{wimlib:true,bitlocker:false}:await api().capture_info();
+  const opts=t.map(x=>`<option value="${x.Letter}">${x.Letter}:  ${x.Label||"USB"} · ${x.FS} · ${GB(x.Free||0)} free</option>`).join("")
+    ||'<option value="">No external USB drive with a letter — plug one in and reopen this page</option>';
+  content().innerHTML=`
+   ${info.bitlocker?`<div class="warnbox">⚠ BitLocker / device encryption is ON — needed off for the Deployment image.
+      <button class="btn small ghost" style="margin-left:8px" onclick="run('bitlocker_off',[],'manage-bde -off')">Turn BitLocker off</button></div>`:""}
+   ${info.wimlib?"":'<div class="warnbox">⚠ bin\\wimlib is missing — download Disk Tool again.</div>'}
+   <div class="field"><label>Save to (external USB only — images go to \\DiskToolImages)</label><select id="c-tgt">${opts}</select></div>
+   <div class="grid2" style="max-width:1000px">
+    <div class="card box"><h3>Backup image</h3>
+      <div class="sectionhint">Live copy of this Windows exactly as it is — programs, files, settings. No restart, you can keep working.
+        Restore it to this PC or one with the same hardware.</div>
+      <div class="row"><button class="btn" onclick="doCap('backup')">Capture backup</button></div></div>
+    <div class="card box"><h3>Deployment image (OOBE)</h3>
+      <div class="sectionhint">For other PCs. Fully automatic: fixes common Sysprep errors, generalizes, restarts into a small
+        capture system, saves the image, then turns the PC off. Next start shows the Windows welcome screen.</div>
+      <div class="row"><button class="btn" onclick="doCap('deploy')">Capture for deployment</button></div></div>
+   </div>
+   <div class="sectionhint" style="margin-top:12px">ESD compression = smallest file, but slow (often 30–90 min). Use the image with “Install to disk”.</div>`;
+}
+function doCap(mode){const L=document.getElementById("c-tgt").value;
+  if(!L){alert("Plug in an external USB drive (NTFS or exFAT).");return;}
+  if(mode==="deploy"){const t=prompt("This runs Sysprep (removes this PC's identity), RESTARTS and captures.\nAfterwards the PC starts at the Windows welcome screen.\nClose all programs. Type CAPTURE to continue:");
+    if(t===null||t.trim().toUpperCase()!=="CAPTURE"){appendLog("Cancelled.");return;}
+    run("capture_deploy",[L],"sysprep + WinPE capture -> "+L+":");}
+  else run("capture_backup",[L],"wimlib-imagex capture C:\\ --snapshot --solid -> "+L+":");}
 async function pickFile(id){if(PREVIEW)return;const p=await window.pywebview.api.choose_file();if(p)document.getElementById(id).value=p;}
 
 function applyTheme(t){document.documentElement.setAttribute("data-theme",t);

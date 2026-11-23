@@ -15,9 +15,9 @@ import threading
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from core import deploy, health, paths, settings, startup, sysinfo, system, ventoy, winops   # noqa: E402
+from core import capture, deploy, health, paths, settings, startup, sysinfo, system, ventoy, winops   # noqa: E402
 
-VERSION = "2.6"
+VERSION = "2.7"
 
 
 class Api:
@@ -216,6 +216,22 @@ class Api:
     def install_to_disk(self, src, index, number, scheme, drivers, compact, recovery=True):
         self._bg(lambda: deploy.install_to_disk(src, index, number, scheme, drivers, bool(compact),
                                                 self._emit, self._stop, bool(recovery))); return True
+
+    # ---- capture image ----
+    def capture_targets(self):
+        return capture.targets()
+
+    def capture_info(self):
+        return {"wimlib": __import__("os").path.isfile(capture.WIMLIB), "bitlocker": capture._bitlocker_on()}
+
+    def capture_backup(self, letter):
+        self._bg(lambda: capture.backup_image(letter, self._emit, self._stop)); return True
+
+    def capture_deploy(self, letter):
+        self._bg(lambda: capture.deploy_image(letter, self._emit, self._stop)); return True
+
+    def bitlocker_off(self):
+        self._bg(lambda: capture.bitlocker_off(self._emit)); return True
 
     # ---- battery & license ----
     def battery(self):
