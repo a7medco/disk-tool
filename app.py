@@ -17,7 +17,7 @@ sys.path.insert(0, HERE)
 
 from core import health, paths, startup, sysinfo, system, ventoy, winops   # noqa: E402
 
-VERSION = "2.3.1"
+VERSION = "2.3.2"
 
 
 class Api:
@@ -26,6 +26,8 @@ class Api:
         self._window = None
         self._goto = goto
         self._stop = threading.Event()
+        # start reading the disks right away, while the window is still opening
+        threading.Thread(target=winops.list_disks, daemon=True).start()
 
     # output streaming -> the page's console
     def _emit(self, line):
@@ -49,8 +51,9 @@ class Api:
         threading.Thread(target=work, daemon=True).start()
 
     # ---- called from JS ----
-    def list_disks(self):
-        return winops.list_disks()
+    def list_disks(self, fresh=False):
+        rows = winops.list_disks(0 if fresh else 15)
+        return {"rows": rows, "took": winops.disks_took()}
 
     def format_disk(self, number, fs, scheme, label):
         self._bg(lambda: winops.format_disk(number, fs, scheme, label, self._emit))

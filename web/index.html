@@ -127,7 +127,7 @@
   <aside class="side">
     <div class="brand">
       <div class="logo">A</div>
-      <div><h1>Disk Tool</h1><p>by Abuzaid · <span id="ver">v2.3.1</span></p></div>
+      <div><h1>Disk Tool</h1><p>by Abuzaid · <span id="ver">v2.3.2</span></p></div>
     </div>
     <nav class="nav" id="nav"></nav>
     <div class="dedic" dir="rtl">
@@ -210,27 +210,31 @@ window.onLog=appendLog;
 window.onDone=function(code){setBusy(false);};
 
 /* ---- data ---- */
-async function getDisks(){
+async function getDisks(fresh){
   if(PREVIEW)return [
     {Number:0,FriendlyName:"Samsung SSD 970 EVO Plus",Size:500107862016,BusType:"NVMe",PartitionStyle:"GPT",IsBoot:true,IsSystem:true,HealthStatus:"Healthy"},
     {Number:1,FriendlyName:"WD Elements 25A3",Size:1000204886016,BusType:"USB",PartitionStyle:"MBR",IsBoot:false,HealthStatus:"Warning"},
     {Number:2,FriendlyName:"SanDisk Ultra Flash",Size:32010928128,BusType:"USB",PartitionStyle:"MBR",IsBoot:false,HealthStatus:"Healthy"},
   ];
-  return await api().list_disks();
+  try{const r=await api().list_disks(!!fresh);
+    if(fresh||r.took>5)appendLog("Disks read in "+r.took+" s"+(r.rows.length?"":" — none found"));
+    return r.rows;}
+  catch(e){appendLog("[X] Could not read the disks: "+(e.message||e));return [];}
 }
 const GB=b=>(b/1e9).toFixed(b<1e11?1:0)+" GB";
 function badge(h){const m={Healthy:["b-ok",h],Warning:["b-warn",h+" · back up"],Unhealthy:["b-bad",h+" · replace"]};
   const[k,t]=m[h]||["tag",h];return `<span class="badge ${k}">${t}</span>`;}
 
 /* ---- views ---- */
-async function viewDisks(){
+async function viewDisks(fresh){
   setTitle("Disks & health","Every drive connected to this PC, with its SMART health.");
   content().innerHTML=`<div class="row" style="margin-bottom:14px">
-    <button class="btn" onclick="viewDisks()">Refresh</button></div>
+    <button class="btn" onclick="viewDisks(true)">Refresh</button></div>
     <div class="card"><table><thead><tr>
     <th>#</th><th>Model</th><th>Size</th><th>Bus</th><th>Role</th><th>Health</th></tr></thead>
     <tbody id="dt"><tr><td colspan="6" class="empty">Reading drives…</td></tr></tbody></table></div>`;
-  const rows=await getDisks();
+  const rows=await getDisks(fresh===true);
+  if(!rows.length){document.getElementById("dt").innerHTML='<tr><td colspan="6" class="empty">No disks were read. Press Refresh, or see the output below.</td></tr>';return;}
   document.getElementById("dt").innerHTML=rows.map(d=>`<tr>
     <td>${d.Number}</td><td class="model">${d.FriendlyName||"?"}</td><td>${GB(d.Size||0)}</td>
     <td>${d.BusType||"?"}</td><td>${(d.IsBoot||d.IsSystem)?'<span class="tag">BOOT</span>':"data"}</td>

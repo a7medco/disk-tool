@@ -21,6 +21,15 @@ jobs:
       - name: Install build tools
         run: python -m pip install --upgrade pip pyinstaller "pywebview==6.2.1"
 
+      - name: Smoke test on real Windows (disks, license, battery, startup)
+        run: >
+          python -c "import time;from core import winops,sysinfo,startup,health;
+          t=time.time();d=winops.list_disks();print('DISKS',round(time.time()-t,1),'s',d);
+          assert d, 'no disks read';
+          print('LICENSE',sysinfo.license_info());print('BATTERY',sysinfo.battery());
+          print('STARTUP',len(startup.list_items()));print('SMART',health.smart_details());
+          print('MEMTEST',winops.memtest_results())"
+
       - name: Build exe
         run: >
           python -m PyInstaller --noconfirm --clean --onefile --windowed --uac-admin

@@ -54,15 +54,41 @@ def diskpart_stream(script_text, log):
 
 # ---- high level operations ------------------------------------------------
 
-def list_disks():
-    disks = ps_json("Get-Disk | Select-Object Number,FriendlyName,Size,BusType,"
-                    "PartitionStyle,IsBoot,IsSystem,OperationalStatus")
-    health = {}
-    for p in ps_json("Get-PhysicalDisk | Select-Object DeviceId,MediaType,HealthStatus"):
-        health[str(p.get("DeviceId"))] = p.get("HealthStatus", "Unknown")
-    for d in disks:
-        d["HealthStatus"] = health.get(str(d.get("Number")), "Unknown")
-    return disks
+DISKS_PS = (
+    # one PowerShell start instead of two; Storage cmdlets first, WMI fallback if they fail
+    "$h=@{}; Get-PhysicalDisk -ErrorAction SilentlyContinue | ForEach-Object { $h[[string]$_.DeviceId]=[string]$_.HealthStatus };"
+    "$d=@(Get-Disk -ErrorAction SilentlyContinue | ForEach-Object { [pscustomobject]@{"
+    "Number=$_.Number; FriendlyName=$_.FriendlyName; Size=$_.Size; BusType=[string]$_.BusType;"
+    "PartitionStyle=[string]$_.PartitionStyle; IsBoot=$_.IsBoot; IsSystem=$_.IsSystem;"
+    "HealthStatus=$(if($h.ContainsKey([string]$_.Number)){$h[[string]$_.Number]}else{'Unknown'})} });"
+    "if($d.Count -eq 0){ $sys=$env:SystemDrive;"
+    " $d=@(Get-CimInstance Win32_DiskDrive | ForEach-Object { $dd=$_;"
+    "  $boot=@(Get-CimAssociatedInstance -InputObject $dd -ResultClassName Win32_DiskPartition |"
+    "   Get-CimAssociatedInstance -ResultClassName Win32_LogicalDisk | Where-Object DeviceID -eq $sys).Count -gt 0;"
+    "  [pscustomobject]@{Number=$dd.Index; FriendlyName=$dd.Model; Size=$dd.Size;"
+    "  BusType=$(if($dd.InterfaceType -eq 'USB' -or $dd.MediaType -like 'Removable*'){'USB'}else{[string]$dd.InterfaceType});"
+    "  PartitionStyle=''; IsBoot=$boot; IsSystem=$boot; HealthStatus=$(if($dd.Status -eq 'OK'){'Healthy'}else{[string]$dd.Status})} }) }"
+    "$d"
+)
+
+_disk_cache = {"t": 0.0, "rows": None}
+_disk_lock = __import__("threading").Lock()
+
+
+def list_disks(max_age=15):
+    """All disks. Cached for a few seconds - several pages ask for the list."""
+    import time
+    with _disk_lock:
+        if _disk_cache["rows"] is not None and time.time() - _disk_cache["t"] < max_age:
+            return _disk_cache["rows"]
+        t0 = time.time()
+        rows = ps_json(DISKS_PS)
+        _disk_cache.update(t=time.time(), rows=rows, took=round(time.time() - t0, 1))
+        return rows
+
+
+def disks_took():
+    return _disk_cache.get("took", 0)
 
 
 def format_disk(number, fs, scheme, label, log):
