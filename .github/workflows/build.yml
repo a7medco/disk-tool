@@ -45,9 +45,18 @@ jobs:
           print('STARTUP',len(startup.list_items()));print('SMART',health.smart_details());
           print('MEMTEST',winops.memtest_results());print('SYSPREP',deploy._sysprep_exe());print('LETTERS',deploy._free_letters(2));print('SAVEIMG',callable(winops.save_image));print('WINRE',capture._winre_path(print));print('SDI',capture._boot_sdi());print('UEFI',capture._is_uefi());print('BITLOCKER',capture._bitlocker_on());print('SYSPREPDIR',capture._sysprep_dir())"
 
+      - name: Speed test - shared PowerShell vs new PowerShell each time
+        run: >
+          python -c "import time,subprocess;from core import system,winops;
+          t=time.time();[subprocess.run(system.PS+['Get-Date'],capture_output=True) for _ in range(5)];print('5 x new powershell',round(time.time()-t,2),'s');
+          system.warm_up();t=time.time();[system.ps_text('Get-Date') for _ in range(5)];print('5 x shared powershell',round(time.time()-t,2),'s');
+          t=time.time();d=winops.list_disks(0);print('disk list',round(time.time()-t,2),'s');
+          [print(x['Number'],x['FriendlyName'],x['Bus'],'ext=',x['IsExternal'],'unalloc=',x['Unallocated'],'vols=',len(x['Volumes'] or [])) for x in d];
+          assert d and 'Bus' in d[0] and 'Volumes' in d[0]"
+
       - name: Build exe
         run: >
-          python -m PyInstaller --noconfirm --clean --onefile --windowed --uac-admin
+          python -m PyInstaller --noconfirm --clean --onedir --windowed --uac-admin
           --name DiskTool --icon DiskTool.ico
           --add-data "web;web" --add-data "redist;redist"
           app.py
@@ -56,7 +65,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force release\DiskTool | Out-Null
-          Copy-Item dist\DiskTool.exe release\DiskTool\
+          Copy-Item dist\DiskTool\* release\DiskTool\ -Recurse
           Copy-Item bin release\DiskTool\bin -Recurse
           Compress-Archive -Path release\DiskTool -DestinationPath DiskTool.zip -Force
 

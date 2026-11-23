@@ -15,9 +15,9 @@ import threading
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from core import capture, deploy, health, paths, settings, startup, sysinfo, system, ventoy, winops   # noqa: E402
+from core import capture, deploy, health, watch, paths, settings, startup, sysinfo, system, ventoy, winops   # noqa: E402
 
-VERSION = "2.7"
+VERSION = "2.8"
 
 
 class Api:
@@ -26,8 +26,11 @@ class Api:
         self._window = None
         self._goto = goto
         self._stop = threading.Event()
-        # start reading the disks right away, while the window is still opening
-        threading.Thread(target=winops.list_disks, daemon=True).start()
+        # start PowerShell + read the disks right away, while the window is still opening
+        def _prefetch():
+            system.warm_up()
+            winops.list_disks()
+        threading.Thread(target=_prefetch, daemon=True).start()
 
     # output streaming -> the page's console
     def _emit(self, line):
@@ -89,10 +92,10 @@ class Api:
         return list(res) if res else []
 
     def start_info(self):
-        return {"goto": self._goto, "version": VERSION, "theme": settings.get("theme", "dark")}
+        return {"goto": self._goto, "version": VERSION, "theme": settings.get("theme", "sky")}
 
     def set_theme(self, theme):
-        settings.put("theme", "light" if theme == "light" else "dark")
+        settings.put("theme", theme if theme in ("sky", "light", "nvidia") else "sky")
         return True
 
     def stop(self):
@@ -286,6 +289,14 @@ def main():
         os.path.join(paths.RES, "web", "index.html"),
         js_api=api, width=w, height=h, min_size=(820, 540))
     api._window = window
+
+    def _devices_changed():
+        winops.list_disks(0)                  # refresh the cache first, then tell the page
+        try:
+            window.evaluate_js("window.onDevices && window.onDevices()")
+        except Exception:
+            pass
+    watch.start(_devices_changed)
     webview.start()
 
 

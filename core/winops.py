@@ -36,7 +36,14 @@ def ps_stream(script, log):
     return run_stream(PS + [script], log)
 
 
+def _online_first(script):
+    import re as _re
+    return _re.sub(r"(select disk \d+\n)", r"\1online disk noerr\nattributes disk clear readonly noerr\n",
+                   script, flags=_re.I)
+
+
 def diskpart_stream(script_text, log):
+    script_text = _online_first(script_text)
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
         f.write(script_text)
         path = f.name
@@ -54,22 +61,42 @@ def diskpart_stream(script_text, log):
 
 # ---- high level operations ------------------------------------------------
 
-DISKS_PS = (
-    # one PowerShell start instead of two; Storage cmdlets first, WMI fallback if they fail
-    "$h=@{}; Get-PhysicalDisk -ErrorAction SilentlyContinue | ForEach-Object { $h[[string]$_.DeviceId]=[string]$_.HealthStatus };"
-    "$d=@(Get-Disk -ErrorAction SilentlyContinue | ForEach-Object { [pscustomobject]@{"
-    "Number=$_.Number; FriendlyName=$_.FriendlyName; Size=$_.Size; BusType=[string]$_.BusType;"
-    "PartitionStyle=[string]$_.PartitionStyle; IsBoot=$_.IsBoot; IsSystem=$_.IsSystem;"
-    "HealthStatus=$(if($h.ContainsKey([string]$_.Number)){$h[[string]$_.Number]}else{'Unknown'})} });"
-    "if($d.Count -eq 0){ $sys=$env:SystemDrive;"
-    " $d=@(Get-CimInstance Win32_DiskDrive | ForEach-Object { $dd=$_;"
-    "  $boot=@(Get-CimAssociatedInstance -InputObject $dd -ResultClassName Win32_DiskPartition |"
-    "   Get-CimAssociatedInstance -ResultClassName Win32_LogicalDisk | Where-Object DeviceID -eq $sys).Count -gt 0;"
-    "  [pscustomobject]@{Number=$dd.Index; FriendlyName=$dd.Model; Size=$dd.Size;"
-    "  BusType=$(if($dd.InterfaceType -eq 'USB' -or $dd.MediaType -like 'Removable*'){'USB'}else{[string]$dd.InterfaceType});"
-    "  PartitionStyle=''; IsBoot=$boot; IsSystem=$boot; HealthStatus=$(if($dd.Status -eq 'OK'){'Healthy'}else{[string]$dd.Status})} }) }"
-    "$d"
-)
+DISKS_PS = r"""
+$ext=@{}
+foreach($dd in @(Get-CimInstance Win32_DiskDrive -ErrorAction SilentlyContinue)){
+  $usb=$false; $cur=[string]$dd.PNPDeviceID
+  for($k=0; $k -lt 8 -and $cur; $k++){
+    if($cur -match '^USB'){ $usb=$true; break }
+    $cur=[string](Get-PnpDeviceProperty -InstanceId $cur -KeyName DEVPKEY_Device_Parent -ErrorAction SilentlyContinue).Data
+  }
+  $ext[[int]$dd.Index]=@{usb=$usb; media=[string]$dd.MediaType}
+}
+$h=@{}; Get-PhysicalDisk -ErrorAction SilentlyContinue | ForEach-Object { $h[[string]$_.DeviceId]=[string]$_.HealthStatus }
+$d=@(Get-Disk -ErrorAction SilentlyContinue | ForEach-Object {
+  $n=[int]$_.Number; $e=$ext[$n]; $bus=[string]$_.BusType
+  $isUsb = ($e -and $e.usb) -or $bus -eq 'USB'
+  $vols=@(Get-Partition -DiskNumber $n -ErrorAction SilentlyContinue | ForEach-Object {
+    $v = $_ | Get-Volume -ErrorAction SilentlyContinue
+    [pscustomobject]@{Letter=[string]$_.DriveLetter; Size=$_.Size; Free=$(if($v){$v.SizeRemaining}else{$null});
+      Label=$(if($v){$v.FileSystemLabel}else{''}); FS=$(if($v){$v.FileSystem}else{''}); Type=[string]$_.Type} })
+  [pscustomobject]@{
+    Number=$n; FriendlyName=$_.FriendlyName; Size=$_.Size; BusType=$bus;
+    Bus=$(if($isUsb -and $bus -ne 'USB'){'USB (UASP)'}elseif($isUsb){'USB'}else{$bus});
+    IsExternal=[bool]($isUsb -or ($e -and $e.media -like 'External*') -or ($e -and $e.media -like 'Removable*'));
+    PartitionStyle=[string]$_.PartitionStyle; IsBoot=$_.IsBoot; IsSystem=$_.IsSystem; IsOffline=$_.IsOffline;
+    Unallocated=($_.PartitionStyle -eq 'RAW' -or ($_.Size - $_.AllocatedSize) -gt 1GB);
+    HealthStatus=$(if($h.ContainsKey([string]$n)){$h[[string]$n]}else{'Unknown'}); Volumes=$vols }
+})
+if($d.Count -eq 0){ $sys=$env:SystemDrive
+  $d=@(Get-CimInstance Win32_DiskDrive | ForEach-Object { $dd=$_; $e=$ext[[int]$dd.Index]
+    $boot=@(Get-CimAssociatedInstance -InputObject $dd -ResultClassName Win32_DiskPartition |
+      Get-CimAssociatedInstance -ResultClassName Win32_LogicalDisk | Where-Object DeviceID -eq $sys).Count -gt 0
+    [pscustomobject]@{Number=$dd.Index; FriendlyName=$dd.Model; Size=$dd.Size; BusType=[string]$dd.InterfaceType;
+      Bus=$(if($e.usb){'USB'}else{[string]$dd.InterfaceType}); IsExternal=[bool]$e.usb;
+      PartitionStyle=''; IsBoot=$boot; IsSystem=$boot; IsOffline=$false; Unallocated=$false;
+      HealthStatus=$(if($dd.Status -eq 'OK'){'Healthy'}else{[string]$dd.Status}); Volumes=@()} }) }
+$d
+"""
 
 _disk_cache = {"t": 0.0, "rows": None}
 _disk_lock = __import__("threading").Lock()
@@ -127,7 +154,8 @@ from .system import capture as _capture
 
 
 def _ps_lines(script):
-    code, out = _capture(PS + [script])
+    from .system import ps_text
+    code, out = ps_text(script)
     return out.splitlines() if code == 0 else []
 
 
