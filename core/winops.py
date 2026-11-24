@@ -85,7 +85,7 @@ $d=@(Get-Disk -ErrorAction SilentlyContinue | ForEach-Object {
     [pscustomobject]@{Letter=[string]$_.DriveLetter; Size=$_.Size; Free=$(if($v){$v.SizeRemaining}else{$null});
       Label=$(if($v){$v.FileSystemLabel}else{''}); FS=$(if($v){$v.FileSystem}else{''}); Type=[string]$_.Type} })
   [pscustomobject]@{
-    Number=$n; FriendlyName=$_.FriendlyName; Size=$_.Size; BusType=$bus;
+    Number=$n; FriendlyName=$_.FriendlyName; Size=$_.Size; BusType=$bus; Serial=([string]$_.SerialNumber).Trim();
     Bus=$(if($isUsb -and $bus -ne 'USB'){'USB (UASP)'}elseif($isUsb){'USB'}else{$bus});
     IsExternal=[bool]($isUsb -or ($e -and $e.media -like 'External*') -or ($e -and $e.media -like 'Removable*'));
     PartitionStyle=[string]$_.PartitionStyle; IsBoot=$_.IsBoot; IsSystem=$_.IsSystem; IsOffline=$_.IsOffline;
@@ -96,7 +96,7 @@ if($d.Count -eq 0){ $sys=$env:SystemDrive
   $d=@(Get-CimInstance Win32_DiskDrive | ForEach-Object { $dd=$_; $e=$ext[[int]$dd.Index]
     $boot=@(Get-CimAssociatedInstance -InputObject $dd -ResultClassName Win32_DiskPartition |
       Get-CimAssociatedInstance -ResultClassName Win32_LogicalDisk | Where-Object DeviceID -eq $sys).Count -gt 0
-    [pscustomobject]@{Number=$dd.Index; FriendlyName=$dd.Model; Size=$dd.Size; BusType=[string]$dd.InterfaceType;
+    [pscustomobject]@{Number=$dd.Index; FriendlyName=$dd.Model; Size=$dd.Size; BusType=[string]$dd.InterfaceType; Serial=([string]$dd.SerialNumber).Trim();
       Bus=$(if($e.usb){'USB'}else{[string]$dd.InterfaceType}); IsExternal=[bool]$e.usb;
       PartitionStyle=''; IsBoot=$boot; IsSystem=$boot; IsOffline=$false; Unallocated=$false;
       HealthStatus=$(if($dd.Status -eq 'OK'){'Healthy'}else{[string]$dd.Status}); Volumes=@()} }) }
@@ -127,6 +127,11 @@ def disks_took():
 
 def format_disk(number, fs, scheme, label, log):
     """Erase a whole disk and create one partition. fs: NTFS/exFAT/FAT32."""
+    from . import guard
+    number = guard.check_disk(number)["Number"]
+    fs = guard.choice(fs, guard.FS_DISK, "file system")
+    scheme = guard.choice(scheme, guard.SCHEMES, "partition scheme")
+    label = guard.label(label, fs)
     script = "\n".join([
         "select disk %s" % number,
         "clean",
@@ -229,6 +234,10 @@ def create_admin(user, password, log):
 
 def assign_remove_letter(disk_number, letter, action, log):
     """action 'assign' or 'remove' a drive letter on the first partition."""
+    from . import guard
+    disk_number = guard.check_disk(disk_number)["Number"]
+    letter = guard.letter(letter)
+    action = guard.choice(action, ("assign", "remove"), "action")
     verb = "assign letter=%s" % letter if action == "assign" else "remove letter=%s" % letter
     script = "select disk %s\nselect partition 1\n%s\nexit\n" % (disk_number, verb)
     return diskpart_stream(script, log)
@@ -285,6 +294,10 @@ def bootable_windows_usb(iso, disk_number, letter, log):
     if not _osp.isfile(iso):
         log("[X] ISO not found: %s" % iso)
         return 1
+    from . import guard
+    d = guard.check_disk(disk_number)
+    guard.file_not_on_disk(iso, d)
+    disk_number, letter = d["Number"], guard.letter(letter)
     log("Preparing the USB (FAT32, bootable)...")
     script = ("select disk %s\nclean\nconvert mbr\ncreate partition primary\n"
               "format fs=fat32 quick label=WINUSB\nassign letter=%s\nactive\nexit\n"
@@ -294,7 +307,7 @@ def bootable_windows_usb(iso, disk_number, letter, log):
 
     log("Mounting the ISO...")
     src = _ps_lines("$r=Mount-DiskImage -ImagePath '%s' -PassThru;"
-                    "($r | Get-Volume).DriveLetter" % iso)
+                    "($r | Get-Volume).DriveLetter" % iso.replace("'", "''"))
     srcL = next((l.strip() for l in src if l.strip()), "")
     if not srcL:
         log("[X] Could not mount the ISO.")
@@ -311,7 +324,7 @@ def bootable_windows_usb(iso, disk_number, letter, log):
         log("[OK] Bootable Windows USB is ready (UEFI).")
         return 0
     finally:
-        _ps_lines("Dismount-DiskImage -ImagePath '%s'" % iso)
+        _ps_lines("Dismount-DiskImage -ImagePath '%s'" % iso.replace("'", "''"))
 
 
 # ========================= v2: drivers, raw image, partitions ==============
@@ -347,6 +360,10 @@ def write_image(img, disk_number, log, stop=None):
     if not _osp.isfile(img):
         log("[X] File not found: %s" % img)
         return 1
+    from . import guard
+    d = guard.check_disk(disk_number)
+    guard.file_not_on_disk(img, d)
+    disk_number = d["Number"]
     log("Clearing the disk so Windows releases it...")
     if diskpart_stream("select disk %s\nclean\nexit\n" % disk_number, log) != 0:
         return 1
@@ -380,6 +397,10 @@ def write_image(img, disk_number, log, stop=None):
 
 def format_volume(letter, fs, label, log):
     """Quick-format one partition (keeps the other partitions)."""
+    from . import guard
+    letter = guard.check_volume(letter)[0]
+    fs = guard.choice(fs, guard.FS_VOL, "file system")
+    label = guard.label(label, fs)
     return ps_stream("Format-Volume -DriveLetter %s -FileSystem %s -NewFileSystemLabel '%s' "
                      "-Confirm:$false -Force | Format-Table -AutoSize | Out-String -Width 200"
                      % (letter, fs, label.replace("'", "")), log)

@@ -15,9 +15,9 @@ import threading
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from core import capture, deploy, health, watch, paths, settings, startup, sysinfo, system, ventoy, winops, yumi   # noqa: E402
+from core import capture, deploy, guard, health, watch, paths, settings, startup, sysinfo, system, ventoy, winops, yumi   # noqa: E402
 
-VERSION = "2.8.2"
+VERSION = "2.9.0"
 
 
 class Api:
@@ -47,11 +47,26 @@ class Api:
         def work():
             try:
                 code = fn()
+            except guard.Blocked as e:
+                self._emit("[X] Blocked for safety: %s" % e)
+                code = -1
             except Exception as e:
                 self._emit("[X] error: %s" % e)
                 code = -1
             self._done(code)
         threading.Thread(target=work, daemon=True).start()
+
+    def _guarded(self, kind, target, fn):
+        """Destructive job: needs a backend ticket from arm() (see core/guard.py)."""
+        def job():
+            guard.take(kind, target)
+            return fn()
+        self._bg(job)
+        return True
+
+    # ---- safety: the UI calls this right after the user confirms ----
+    def arm(self, kind, target, typed):
+        return guard.arm(kind, target, typed)
 
     # ---- called from JS ----
     def list_disks(self, fresh=False):
@@ -59,11 +74,11 @@ class Api:
         return {"rows": rows, "took": winops.disks_took()}
 
     def format_disk(self, number, fs, scheme, label):
-        self._bg(lambda: winops.format_disk(number, fs, scheme, label, self._emit))
-        return True
+        return self._guarded("disk", number, lambda: winops.format_disk(number, fs, scheme, label, self._emit))
 
     def chkdsk(self, letter, level):
-        self._bg(lambda: winops.chkdsk(letter, level, self._emit))
+        self._bg(lambda: winops.chkdsk(guard.letter(letter), guard.choice(level, ("scan", "fix", "full"), "level"),
+                                       self._emit))
         return True
 
     def robocopy(self, src, dst):
@@ -93,7 +108,16 @@ class Api:
         return list(res) if res else []
 
     def start_info(self):
-        return {"goto": self._goto, "version": VERSION, "theme": settings.get("theme", "sky")}
+        return {"goto": self._goto, "version": VERSION, "theme": settings.get("theme", "sky"),
+                "ui": settings.get("ui", {})}
+
+    def set_ui(self, ui):
+        """Sidebar groups open + console open/closed (only these two keys are stored)."""
+        if isinstance(ui, dict):
+            op = ui.get("open")
+            settings.put("ui", {"open": [str(g)[:40] for g in op][:20] if isinstance(op, list) else None,
+                                "console": bool(ui.get("console", True))})
+        return True
 
     def set_theme(self, theme):
         settings.put("theme", theme if theme in ("sky", "light", "nvidia") else "sky")
@@ -112,15 +136,15 @@ class Api:
 
     # background (streamed) operations
     def reset_password(self, user, pw):
-        self._bg(lambda: winops.reset_password(user, pw, self._emit))
-        return True
+        return self._guarded("action", "password",
+                             lambda: winops.reset_password(_user(user), _pw(pw), self._emit))
 
     def create_admin(self, user, pw):
-        self._bg(lambda: winops.create_admin(user, pw, self._emit))
-        return True
+        return self._guarded("action", "create_admin",
+                             lambda: winops.create_admin(_user(user), _pw(pw), self._emit))
 
     def letter(self, number, letter, action):
-        self._bg(lambda: winops.assign_remove_letter(number, letter, action, self._emit))
+        self._bg(lambda: winops.assign_remove_letter(number, letter, action, self._emit))  # checked in winops
         return True
 
     def vc_create(self, path, size, fs, pw):
@@ -136,8 +160,8 @@ class Api:
         return True
 
     def bootable_usb(self, iso, number, letter):
-        self._bg(lambda: winops.bootable_windows_usb(iso, number, letter, self._emit))
-        return True
+        return self._guarded("disk", number, lambda: winops.bootable_windows_usb(
+            guard.existing_file(iso, (".iso",)), number, letter, self._emit))
 
 
     # ---- v2: drivers, raw image, partitions, RAM, menu ----
@@ -145,13 +169,15 @@ class Api:
         self._bg(lambda: winops.export_drivers(folder, self._emit)); return True
 
     def import_drivers(self, folder):
-        self._bg(lambda: winops.import_drivers(folder, self._emit)); return True
+        return self._guarded("action", "import_drivers", lambda: winops.import_drivers(folder, self._emit))
 
     def write_image(self, img, number):
-        self._bg(lambda: winops.write_image(img, number, self._emit, self._stop)); return True
+        return self._guarded("disk", number, lambda: winops.write_image(
+            guard.existing_file(img), number, self._emit, self._stop))
 
     def save_image(self, number, size, path):
-        self._bg(lambda: winops.save_image(number, size, path, self._emit, self._stop)); return True
+        self._bg(lambda: winops.save_image(guard.find_disk(number)["Number"], size, path, self._emit, self._stop))
+        return True
 
     def choose_save(self, name):
         import webview
@@ -162,10 +188,10 @@ class Api:
         return res if isinstance(res, str) else res[0]
 
     def format_volume(self, letter, fs, label):
-        self._bg(lambda: winops.format_volume(letter, fs, label, self._emit)); return True
+        return self._guarded("volume", letter, lambda: winops.format_volume(letter, fs, label, self._emit))
 
     def eject(self, letter):
-        self._bg(lambda: winops.eject(letter, self._emit)); return True
+        self._bg(lambda: winops.eject(guard.check_volume(letter)[0], self._emit)); return True
 
     def ram_test(self):
         self._bg(lambda: winops.ram_test(self._emit)); return True
@@ -185,10 +211,12 @@ class Api:
         return health.smart_details()
 
     def surface_test(self, number, size):
-        self._bg(lambda: health.surface_test(number, size, self._emit, self._stop)); return True
+        self._bg(lambda: health.surface_test(guard.find_disk(number)["Number"], size, self._emit, self._stop))
+        return True
 
     def system_repair(self, kind):
-        self._bg(lambda: health.system_repair(kind, self._emit)); return True
+        self._bg(lambda: health.system_repair(guard.choice(kind, ("sfc", "dism"), "repair"), self._emit))
+        return True
 
     # ---- multi-ISO (Ventoy) ----
     def ventoy_info(self):
@@ -199,10 +227,14 @@ class Api:
         return ventoy.set_exe(p) and p or ""
 
     def ventoy_install(self, number, mode, gpt, sb):
-        self._bg(lambda: ventoy.install(number, mode, gpt, sb, self._emit)); return True
+        if str(mode).upper() == "I":            # fresh install erases the USB
+            return self._guarded("disk", number, lambda: ventoy.install(number, "I", gpt, sb, self._emit))
+        self._bg(lambda: ventoy.install(number, "U", gpt, sb, self._emit)); return True
 
     def ventoy_add(self, number, files):
-        self._bg(lambda: ventoy.add_isos(number, files, self._emit)); return True
+        self._bg(lambda: ventoy.add_isos(guard.find_disk(number)["Number"],
+                                         [guard.existing_file(f) for f in (files or [])], self._emit))
+        return True
 
     def ventoy_list(self, number):
         return ventoy.list_isos(number)
@@ -223,17 +255,20 @@ class Api:
 
     # ---- OOBE & Windows To Go ----
     def sysprep(self, generalize, after):
-        self._bg(lambda: deploy.sysprep_oobe(bool(generalize), after, self._emit)); return True
+        after = guard.choice(after, ("shutdown", "reboot"), "after")
+        return self._guarded("action", "sysprep", lambda: deploy.sysprep_oobe(bool(generalize), after, self._emit))
 
     def wtg_editions(self, src):
         return deploy.list_editions(src)
 
     def wtg_create(self, src, index, number):
-        self._bg(lambda: deploy.windows_to_go(src, index, number, self._emit, self._stop)); return True
+        return self._guarded("disk", number, lambda: deploy.windows_to_go(
+            guard.existing_file(src, (".iso", ".wim", ".esd")), int(index), number, self._emit, self._stop))
 
     def install_to_disk(self, src, index, number, scheme, drivers, compact, recovery=True):
-        self._bg(lambda: deploy.install_to_disk(src, index, number, scheme, drivers, bool(compact),
-                                                self._emit, self._stop, bool(recovery))); return True
+        return self._guarded("disk", number, lambda: deploy.install_to_disk(
+            guard.existing_file(src, (".iso", ".wim", ".esd")), int(index), number, scheme, drivers,
+            bool(compact), self._emit, self._stop, bool(recovery)))
 
     # ---- capture image ----
     def capture_targets(self):
@@ -243,13 +278,14 @@ class Api:
         return {"wimlib": __import__("os").path.isfile(capture.WIMLIB), "bitlocker": capture._bitlocker_on()}
 
     def capture_backup(self, letter):
-        self._bg(lambda: capture.backup_image(letter, self._emit, self._stop)); return True
+        self._bg(lambda: capture.backup_image(guard.letter(letter), self._emit, self._stop)); return True
 
     def capture_deploy(self, letter):
-        self._bg(lambda: capture.deploy_image(letter, self._emit, self._stop)); return True
+        return self._guarded("action", "capture_deploy",
+                             lambda: capture.deploy_image(guard.letter(letter), self._emit, self._stop))
 
     def bitlocker_off(self):
-        self._bg(lambda: capture.bitlocker_off(self._emit)); return True
+        return self._guarded("action", "bitlocker_off", lambda: capture.bitlocker_off(self._emit))
 
     # ---- battery & license ----
     def battery(self):
@@ -267,6 +303,22 @@ class Api:
 
     def startup_set(self, item_id, enable):
         return startup.set_enabled(item_id, enable, self._emit) == 0
+
+
+def _user(u):
+    """Local account name: letters, digits, space . _ - (max 20, Windows limit)."""
+    import re
+    u = str(u or "").strip()
+    if not re.fullmatch(r"[A-Za-z0-9 ._\-]{1,20}", u):
+        raise guard.Blocked("invalid user name (letters, digits, space . _ - ; max 20).")
+    return u
+
+
+def _pw(p):
+    p = str(p or "")
+    if not p or p == "*" or len(p) > 127 or any(c in p for c in "\r\n\x00"):
+        raise guard.Blocked("invalid password (empty, '*', too long or has line breaks).")
+    return p
 
 
 def main():

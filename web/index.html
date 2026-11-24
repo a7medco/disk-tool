@@ -16,7 +16,7 @@
     --bg1:#070d1a; --bg2:#0f1a31; --panel:#0e172b; --panel-2:#132036; --line:#22314f;
     --ink:#e8f2ff; --muted:#8ea3c4; --navi:#b6c6e0; --nav-act:#16233d;
     --ok:#34d399; --good:#34d399; --warn:#fbbf24; --bad:#f87171;
-    --console:#050a14; --console-ink:#cfe0f7; --console-cmd:#7dd3fc;
+    --console:#050a14; --console-ink:#cfe0f7; --console-cmd:#7dd3fc; --console-ok:#34d399; --console-bad:#f87171;
     --field:#0a1224; --radius:10px; --shadow:0 1px 0 rgba(255,255,255,.03),0 10px 30px rgba(0,0,0,.45);
     --head-bg:linear-gradient(180deg,#081022,#0c1630);
   }
@@ -25,7 +25,7 @@
     --bg1:#e9eff6; --bg2:#dde6f0; --panel:#ffffff; --panel-2:#f1f5fa; --line:#b9c8d9;
     --ink:#0b1626; --muted:#334155; --navi:#132238; --nav-act:#d3e4f5;
     --ok:#047857; --good:#047857; --warn:#b45309; --bad:#b91c1c;
-    --console:#0b1424; --console-ink:#e6eef8; --console-cmd:#7dd3fc;
+    --console:#0b1424; --console-ink:#e6eef8; --console-cmd:#7dd3fc; --console-ok:#34d399; --console-bad:#f87171;
     --field:#ffffff; --shadow:0 1px 2px rgba(11,22,38,.08),0 6px 16px rgba(11,22,38,.08);
     --head-bg:#ffffff;
   }
@@ -37,7 +37,7 @@
     --bg1:#16181b; --bg2:#2a2d33; --panel:#1f2226; --panel-2:#272a30; --line:#363a41;
     --ink:#eef0f2; --muted:#9aa1aa; --navi:#c9cdd3; --nav-act:#2f333a;
     --ok:#76b900; --good:#76b900; --warn:#f0a020; --bad:#e5484d;
-    --console:#0f1113; --console-ink:#d7dbe0; --console-cmd:#9bd14a;
+    --console:#0f1113; --console-ink:#d7dbe0; --console-cmd:#9bd14a; --console-ok:#8fd400; --console-bad:#ff7b7f;
     --field:#15171a; --radius:6px; --shadow:0 1px 0 rgba(255,255,255,.03),0 8px 24px rgba(0,0,0,.35);
     --head-bg:linear-gradient(180deg,#121417,#1a1c20);
   }
@@ -67,8 +67,15 @@
     border-right:1px solid var(--line)}
   .nav{display:flex;flex-direction:column;gap:1px;flex:1 1 auto;overflow-y:auto;min-height:0}
   .nav::-webkit-scrollbar{width:6px}.nav::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
-  .nav .grp{font-size:10.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
-    color:var(--g);padding:14px 12px 5px}
+  .nav .grp{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:transparent;
+    font:inherit;font-size:10.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;cursor:pointer;
+    color:var(--g);padding:12px 12px 5px;border-radius:4px;text-align:left}
+  .nav .grp:hover{background:var(--nav-act)}
+  .nav .grp .chev{transition:transform .15s;font-size:11px;color:var(--muted)}
+  .nav .grp.closed .chev{transform:rotate(-90deg)}
+  .nav .grp .cnt{margin-left:auto;margin-right:8px;font-size:10px;color:var(--muted);font-weight:600;letter-spacing:0}
+  .nav .gitems{display:flex;flex-direction:column;gap:1px}
+  .nav .gitems.closed{display:none}
   .nav button{display:flex;align-items:center;gap:11px;width:100%;border:0;cursor:pointer;
     background:transparent;color:var(--navi);font:inherit;font-size:14px;text-align:left;
     padding:8px 12px;border-radius:4px;transition:.12s;border-left:3px solid transparent}
@@ -165,9 +172,17 @@
   .console-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
   .console-h span{font-size:11.5px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:1.2px}
   .console-h .clear{font-size:12px;color:var(--muted);cursor:pointer;background:0;border:0}
+  .console-h .tgl{display:flex;align-items:center;gap:8px;min-width:0;flex:1;background:0;border:0;cursor:pointer;font:inherit;text-align:left}
+  .console-h .tgl .chev{color:var(--g);font-size:11px;transition:transform .15s}
+  .console-h .last{font-family:Consolas,monospace;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .console-wrap.closed .console{display:none}
+  .console-wrap.closed .console-h{margin-bottom:0}
+  .console-wrap.closed .tgl .chev{transform:rotate(-90deg)}
+  .console-wrap:not(.closed) .last{display:none}
   .console{height:140px;overflow:auto;background:var(--console);color:var(--console-ink);border:1px solid var(--line);
     border-radius:4px;padding:12px 14px;font-family:Consolas,monospace;font-size:12.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
-  .console .cmd{color:var(--console-cmd)} .console .ok{color:#8fd400} .console .bad{color:#ff7b7f}
+  .console .cmd{color:var(--console-cmd)} .console .ok{color:var(--console-ok)} .console .bad{color:var(--console-bad)}
+  .t-ok{color:var(--ok)} .t-warn{color:var(--warn)} .t-bad{color:var(--bad)} .t-muted{color:var(--muted)}
   .spin{display:inline-block;width:13px;height:13px;border:2px solid #0004;border-top-color:currentColor;
     border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px;margin-right:7px}
   @keyframes s{to{transform:rotate(360deg)}}
@@ -185,7 +200,7 @@
 </head>
 <body>
   <header class="top">
-    <div><h1>Disk Tool</h1><p>Windows service toolkit · Version <span id="ver">2.8.1</span></p></div>
+    <div><h1>Disk Tool</h1><p>Windows service toolkit · Version <span id="ver">2.9.0</span></p></div>
     <div class="brandmark">
       <div class="emblem">A</div><div class="wordmark">ABUZAID</div>
       <select class="themesel" id="themesel" onchange="setTheme(this.value)">
@@ -208,7 +223,8 @@
     <div class="head"><h2 id="title">Disks &amp; health</h2><p id="sub"></p></div>
     <div class="content" id="content"></div>
     <div class="console-wrap">
-      <div class="console-h"><span>Output</span><button class="clear" onclick="clearLog()">clear</button></div>
+      <div class="console-h"><button class="tgl" onclick="toggleConsole()" title="Show / hide output"><span class="chev">▾</span><span>Output</span><span class="last" id="lastline"></span></button>
+        <button class="clear" onclick="clearLog()">clear</button></div>
       <div class="console" id="console"><div class="empty">Output from commands shows here.</div></div>
     </div>
   </main>
@@ -250,24 +266,45 @@ let PREVIEW = true;   // becomes false once pywebview is ready
 let busy=false;
 const api=()=>window.pywebview.api;
 
+/* Sidebar: collapsible groups. Open groups are remembered (settings.json via the backend). */
+let UI={open:null,console:true};
 function nav(){
-  const n=document.getElementById("nav");
+  const n=document.getElementById("nav");let box=null,head=null,cnt=0;
   VIEWS.forEach(v=>{
-    if(v.grp){const g=document.createElement("div");g.className="grp";g.textContent=v.grp;n.appendChild(g);return;}
-    const b=document.createElement("button");
+    if(v.grp){if(head)head.querySelector(".cnt").textContent=cnt;cnt=0;
+      head=document.createElement("button");head.className="grp closed";head.dataset.grp=v.grp;
+      head.innerHTML=`<span>${v.grp}</span><span class="cnt"></span><span class="chev">▾</span>`;
+      box=document.createElement("div");box.className="gitems closed";box.dataset.grp=v.grp;
+      head.onclick=()=>setGroup(v.grp,box.classList.contains("closed"),true);
+      n.appendChild(head);n.appendChild(box);return;}
+    const b=document.createElement("button");cnt++;
     b.innerHTML=`${svg(v.id)}<span>${v.name}</span>`;
     b.onclick=()=>{if(busy){appendLog("[!] Wait for the current job to finish (or press Stop).");return;}active(b);CUR=v.id;v.fn();};
-    b.dataset.id=v.id; n.appendChild(b);
+    b.dataset.id=v.id; (box||n).appendChild(b);
   });
+  if(head)head.querySelector(".cnt").textContent=cnt;
 }
+function setGroup(g,open,save){
+  document.querySelectorAll(`.nav [data-grp="${g}"]`).forEach(e=>e.classList.toggle("closed",!open));
+  if(save){UI.open=[...document.querySelectorAll(".nav .gitems:not(.closed)")].map(e=>e.dataset.grp);saveUI();}}
+function applyNavState(){const act=document.querySelector(".nav button.active");
+  const ag=act&&act.parentElement.dataset.grp;
+  document.querySelectorAll(".nav .gitems").forEach(b=>{const g=b.dataset.grp;
+    setGroup(g,UI.open?UI.open.includes(g)||g===ag:g===ag,false);});}
+function saveUI(){if(!PREVIEW)try{api().set_ui(UI);}catch(e){}}
+/* Output console: collapsible; opens by itself when a job starts or something fails. */
+function setConsole(open,save){document.querySelector(".console-wrap").classList.toggle("closed",!open);
+  if(save){UI.console=open;saveUI();}}
+function toggleConsole(){setConsole(document.querySelector(".console-wrap").classList.contains("closed"),true);}
 let CUR="home";
 function go(id){const v=VIEWS.find(x=>x.id===id)||VIEWS[1];CUR=v.id;
   const b=document.querySelector(`.nav button[data-id="${v.id}"]`);active(b);b.scrollIntoView({block:"nearest"});v.fn();}
 window.onDisksHook=()=>{if(CUR==="home")viewHome();else if(CUR==="disks")viewDisks();};
-function active(b){document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");}
+function active(b){document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");
+  const g=b.parentElement&&b.parentElement.dataset.grp;if(g)setGroup(g,true,false);}
 function content(){return document.getElementById("content");}
 function setTitle(t,s){document.getElementById("title").textContent=t;document.getElementById("sub").textContent=s||"";}
-function setBusy(b){busy=b;document.querySelectorAll(".btn:not(.keep)").forEach(x=>x.disabled=b);
+function setBusy(b){busy=b;if(b)setConsole(true,false);document.querySelectorAll(".btn:not(.keep)").forEach(x=>x.disabled=b);
   document.querySelectorAll(".btn.stop").forEach(x=>x.disabled=!b);}
 function stopJob(){if(!PREVIEW)api().stop();appendLog("Stopping...");}
 
@@ -280,8 +317,11 @@ function appendLog(line){
   else if(line.startsWith("[OK]"))d.className="ok";
   else if(line.startsWith("[X]"))d.className="bad";
   d.textContent=line; c.appendChild(d); c.scrollTop=c.scrollHeight;
+  const ll=document.getElementById("lastline");if(ll){ll.textContent=line;ll.className="last"+(d.className==="bad"?" t-bad":d.className==="ok"?" t-ok":"");}
+  if(line.startsWith("[X]"))setConsole(true,false);
 }
-function clearLog(){document.getElementById("console").innerHTML='<div class="empty">Output from commands shows here.</div>';}
+function clearLog(){document.getElementById("console").innerHTML='<div class="empty">Output from commands shows here.</div>';
+  const ll=document.getElementById("lastline");if(ll)ll.textContent="";}
 window.onLog=appendLog;
 window.onDone=function(code){setBusy(false);if(devPending){devPending=false;window.onDevices();}};
 
@@ -398,8 +438,7 @@ async function doFormat(){
   const fs=document.getElementById("f-fs").value,sch=document.getElementById("f-sch").value,
     label=document.getElementById("f-label").value||"USB";
   if(fs==="FAT32"&&d.Size>32e9){alert("FAT32 is limited to 32 GB. Use exFAT or NTFS.");return;}
-  const t=prompt(`ALL DATA on Disk ${d.Number} (${d.FriendlyName}) will be destroyed.\nType ${d.Number} to confirm:`);
-  if(t===null||t.trim()!==String(d.Number)){appendLog("Cancelled.");return;}
+  if(!await confirmDisk(d,"Format the whole disk ("+fs+", "+sch+")."))return;
   setBusy(true);
   if(PREVIEW){appendLog("> diskpart /s (preview only)");setBusy(false);return;}
   window.pywebview.api.format_disk(d.Number,fs,sch,label);
@@ -436,12 +475,12 @@ async function viewUSB(){
     <button class="btn" onclick="doUSB()">Create bootable USB</button>`;
   fillDiskSelects();
 }
-function doUSB(){
+async function doUSB(){
   const d=selDisk("u-disk"),iso=document.getElementById("u-iso").value;
   if(!d){alert("Pick a USB disk.");return;}
   if(!iso){alert("Choose a Windows ISO file.");return;}
   const L=(document.getElementById("u-letter").value||"W").slice(0,1).toUpperCase();
-  if(!confirmDisk(d,"Create bootable Windows USB."))return;
+  if(!await confirmDisk(d,"Create bootable Windows USB."))return;
   setBusy(true);
   if(PREVIEW){appendLog("> diskpart + robocopy + dism (preview)");setBusy(false);return;}
   window.pywebview.api.bootable_usb(iso,d.Number,L);
@@ -480,9 +519,11 @@ async function viewPass(){
       <button class="btn ghost" onclick="doPass('admin')">Create new admin account</button></div>
     <p class="sectionhint" style="margin-top:14px">“Create new admin” adds a brand-new local administrator with the name &amp; password above.</p>`;
 }
-function doPass(mode){
+async function doPass(mode){
   const user=document.getElementById("p-user").value, pw=document.getElementById("p-pw").value;
   if(!user||!pw){alert("Pick an account and type a new password.");return;}
+  if(!await confirmAction(mode==="admin"?"create_admin":"password",
+     mode==="admin"?`Create a NEW administrator account "${user}"?`:`Change the password of "${user}"?`))return;
   setBusy(true);
   if(PREVIEW){appendLog(`> net user ${user} ***`);setBusy(false);return;}
   if(mode==="admin") window.pywebview.api.create_admin(user,pw);
@@ -519,8 +560,16 @@ function doVC(mode){
 
 /* ---- helpers ---- */
 const usbDisks=async()=>(await getDisks()).filter(isTarget);
-function confirmDisk(d,what){const t=prompt(`${what}\nALL DATA on Disk ${d.Number} (${d.FriendlyName}) will be destroyed.\nType ${d.Number} to confirm:`);
-  if(t===null||t.trim()!==String(d.Number)){appendLog("Cancelled.");return false;}return true;}
+/* Safety: the UI confirm is step 1; the backend (core/guard.py) re-checks and issues a one-time ticket. */
+async function armOk(kind,target,typed){if(PREVIEW)return true;
+  const r=await api().arm(kind,target,typed);
+  if(!r.ok){appendLog("[X] Blocked for safety: "+r.msg);alert("Blocked for safety:\n"+r.msg);}return r.ok;}
+async function confirmDisk(d,what){const t=prompt(`${what}\nALL DATA on Disk ${d.Number} (${d.FriendlyName}) will be destroyed.\nType ${d.Number} to confirm:`);
+  if(t===null||t.trim()!==String(d.Number)){appendLog("Cancelled.");return false;}
+  return armOk("disk",d.Number,t);}
+async function confirmAction(name,msg,word){const t=word?prompt(msg+"\nType "+word+" to confirm:"):(confirm(msg)?"YES":null);
+  if(t===null||(word&&t.trim().toUpperCase()!==word)){appendLog("Cancelled.");return false;}
+  return armOk("action",name,t);}
 function run(fnName,args,pv){setBusy(true);
   if(PREVIEW){appendLog("> "+(pv||fnName)+" (preview)");setTimeout(()=>setBusy(false),300);return;}
   api()[fnName](...args);}
@@ -602,8 +651,8 @@ async function viewMulti(){
 const muDisk=()=>selDisk("m-disk");
 async function locateVentoy(){if(PREVIEW)return;const p=await api().ventoy_locate();
   if(p)document.getElementById("m-exe").textContent=p;else appendLog("[X] Pick the file named Ventoy2Disk.exe.");}
-function doVentoy(mode){const d=muDisk();if(!d){alert("Pick a USB disk.");return;}
-  if(mode==="I"&&!confirmDisk(d,"Install Ventoy (multi-ISO)."))return;
+async function doVentoy(mode){const d=muDisk();if(!d){alert("Pick a USB disk.");return;}
+  if(mode==="I"&&!await confirmDisk(d,"Install Ventoy (multi-ISO)."))return;
   run("ventoy_install",[d.Number,mode,document.getElementById("m-gpt").checked,document.getElementById("m-sb").checked],
     "Ventoy2Disk.exe VTOYCLI /"+mode+" /PhyDrive:"+d.Number);}
 async function addIsos(){const d=muDisk();if(!d){alert("Pick the Ventoy USB.");return;}
@@ -620,8 +669,8 @@ async function listIsos(){const d=muDisk();if(!d)return;
 async function viewYumi(){
   setTitle("YUMI exFAT — Multi-ISO USB","Multiboot USB on exFAT: files over 4 GB, BIOS + UEFI, Linux persistence. Runs in its own window.");
   const i=PREVIEW?{exe:"bin\\yumi\\YUMI-exFAT-1.0.4.3.exe",version:"1.0.4.3",verified:true}:await api().yumi_info();
-  const st=!i.exe?'<span style="color:#f87171">not found</span>'
-    :i.verified?'<span style="color:var(--g)">✓ official '+i.version+'</span>':'<span style="color:#fbbf24">unknown build (not the official 1.0.4.3 file)</span>';
+  const st=!i.exe?'<span class="t-bad">not found</span>'
+    :i.verified?'<span class="t-ok">✓ official '+i.version+'</span>':'<span class="t-warn">unknown build (not the official 1.0.4.3 file)</span>';
   content().innerHTML=`
    <div class="card box" style="margin-bottom:16px;max-width:760px">
      <div class="row" style="justify-content:space-between">
@@ -631,7 +680,7 @@ async function viewYumi(){
    <div class="card box" style="max-width:760px">
      <h3>Open YUMI exFAT</h3>
      <div class="sectionhint">Pick the USB, prepare it, then add ISOs — all inside YUMI's own window.</div>
-     <div class="sectionhint" style="color:#fbbf24">⚠ Preparing a USB in YUMI erases everything on it.
+     <div class="warnbox" style="margin-bottom:12px">⚠ Preparing a USB in YUMI erases everything on it.
        Use YUMI <b>or</b> the Ventoy page for a USB — not both on the same stick.</div>
      <div class="row" style="margin-top:10px"><button class="btn" onclick="openYumi()">Open YUMI exFAT</button></div></div>`;
 }
@@ -669,9 +718,9 @@ function doSave(){const d=selDisk("s-disk"),o=document.getElementById("s-out").v
   if(!d){alert("Connect the drive by USB.");return;}
   if(!o){alert("Choose where to save the .img file.");return;}
   run("save_image",[d.Number,d.Size,o.toLowerCase().endsWith(".img")?o:o+".img"],"read \\\\.\\PhysicalDrive"+d.Number+" -> "+o);}
-function doImg(){const d=selDisk("i-disk"),f=document.getElementById("i-file").value;
+async function doImg(){const d=selDisk("i-disk"),f=document.getElementById("i-file").value;
   if(!d||!f){alert("Choose an image and a USB disk.");return;}
-  if(!confirmDisk(d,"Write raw image."))return;run("write_image",[f,d.Number],"write \\\\.\\PhysicalDrive"+d.Number);}
+  if(!await confirmDisk(d,"Write raw image."))return;run("write_image",[f,d.Number],"write \\\\.\\PhysicalDrive"+d.Number);}
 
 /* ---- Partition tools ---- */
 function viewPart(){
@@ -682,11 +731,12 @@ function viewPart(){
    <div class="row"><button class="btn" onclick="doPart('format')">Format this partition</button>
    <button class="btn ghost" onclick="doPart('eject')">Eject</button></div>`;
 }
-function doPart(mode){const drv=(document.getElementById("pt-drv").value||"").replace(":","").slice(0,1).toUpperCase();
+async function doPart(mode){const drv=(document.getElementById("pt-drv").value||"").replace(":","").slice(0,1).toUpperCase();
   if(!/[A-Z]/.test(drv)){alert("Enter a drive letter.");return;}
   if(drv==="C"){alert("C: is the Windows drive.");return;}
   if(mode==="format"){const t=prompt(`ALL DATA on ${drv}: will be erased.\nType ${drv} to confirm:`);
     if(t===null||t.trim().toUpperCase()!==drv){appendLog("Cancelled.");return;}
+    if(!await armOk("volume",drv,t))return;
     run("format_volume",[drv,document.getElementById("pt-fs").value,document.getElementById("pt-label").value||"DATA"],"Format-Volume "+drv);}
   else run("eject",[drv],"eject "+drv);}
 
@@ -744,7 +794,8 @@ function viewDrivers(){
    <div class="row"><button class="btn" onclick="doDrv('backup')">Back up drivers</button>
    <button class="btn ghost" onclick="doDrv('restore')">Restore from folder</button></div>`;
 }
-function doDrv(m){const f=document.getElementById("d-folder").value;if(!f){alert("Choose a folder.");return;}
+async function doDrv(m){const f=document.getElementById("d-folder").value;if(!f){alert("Choose a folder.");return;}
+  if(m!=="backup"&&!await confirmAction("import_drivers","Install every driver found in:\n"+f+" ?"))return;
   m==="backup"?run("export_drivers",[f],"dism /online /export-driver"):run("import_drivers",[f],"pnputil /add-driver /subdirs /install");}
 
 /* ---- Right-click menu ---- */
@@ -827,11 +878,11 @@ async function wtgEd(){const src=document.getElementById("w-src").value,sel=docu
   const l=PREVIEW?[{Index:1,Name:"Windows 11 Home",Size:18e9},{Index:6,Name:"Windows 11 Pro",Size:19e9}]:await api().wtg_editions(src);
   sel.innerHTML=l.length?l.map(e=>`<option value="${e.Index}">${e.Index} · ${e.Name}</option>`).join(""):'<option value="">No editions found in this file</option>';
   const pro=l.find(e=>/ pro$/i.test(e.Name));if(pro)sel.value=pro.Index;}
-function doWtg(){const d=selDisk("w-disk"),
+async function doWtg(){const d=selDisk("w-disk"),
   src=document.getElementById("w-src").value,idx=document.getElementById("w-idx").value;
   if(!src||!idx){alert("Choose the Windows file and an edition.");return;}
   if(!d){alert("Connect a USB disk.");return;}
-  if(!confirmDisk(d,"Create Windows To Go."))return;
+  if(!await confirmDisk(d,"Create Windows To Go."))return;
   run("wtg_create",[src,+idx,d.Number],"dism /Apply-Image + bcdboot /f ALL");}
 
 /* ---- Prepare for sale (Sysprep → OOBE) ---- */
@@ -850,8 +901,8 @@ function viewOobe(){
    <div class="warnbox" style="margin-top:16px">⚠ Sign out of Microsoft / Apple / Google accounts and remove personal files first —
      Sysprep does not delete user folders. Close every program; the PC turns off when it finishes.</div>`;
 }
-function doOobe(gen,after){const t=prompt((gen?"GENERALIZE + OOBE":"OOBE")+": the PC will "+after.toUpperCase()+" when done.\\nType OOBE to confirm:");
-  if(t===null||t.trim().toUpperCase()!=="OOBE"){appendLog("Cancelled.");return;}
+async function doOobe(gen,after){
+  if(!await confirmAction("sysprep",(gen?"GENERALIZE + OOBE":"OOBE")+": the PC will "+after.toUpperCase()+" when done.","OOBE"))return;
   run("sysprep",[gen,after],"sysprep.exe "+(gen?"/generalize ":"")+"/oobe /"+after);}
 
 /* ---- Install Windows to disk (WinNTSetup-style) ---- */
@@ -885,13 +936,13 @@ async function instEd(){const src=document.getElementById("i-src").value,sel=doc
   const l=PREVIEW?[{Index:1,Name:"Windows 11 Home"},{Index:6,Name:"Windows 11 Pro"}]:await api().wtg_editions(src);
   sel.innerHTML=l.length?l.map(e=>`<option value="${e.Index}">${e.Index} · ${e.Name}</option>`).join(""):'<option value="">No editions found in this file</option>';
   const pro=l.find(e=>/ pro$/i.test(e.Name));if(pro)sel.value=pro.Index;}
-function doInst(){const d=selDisk("i-disk"),
+async function doInst(){const d=selDisk("i-disk"),
   src=document.getElementById("i-src").value,idx=document.getElementById("i-idx").value,
   sch=document.querySelector('input[name=isch]:checked').value,drv=document.getElementById("i-drv").value.trim(),
   cmp=document.getElementById("i-cmp").checked,rec=document.getElementById("i-rec").checked;
   if(!src||!idx){alert("Choose the Windows file and an edition.");return;}
   if(!d){alert("Connect the SSD/HDD by USB.");return;}
-  if(!confirmDisk(d,"Install Windows ("+sch.toUpperCase()+")."))return;
+  if(!await confirmDisk(d,"Install Windows ("+sch.toUpperCase()+")."))return;
   run("install_to_disk",[src,+idx,d.Number,sch,drv,cmp,rec],"dism /Apply-Image + bcdboot /f "+(sch==="gpt"?"UEFI":"BIOS"));}
 
 /* ---- Capture image ---- */
@@ -904,7 +955,7 @@ async function viewCap(){
     ||'<option value="">No external USB drive with a letter — plug one in and reopen this page</option>';
   content().innerHTML=`
    ${info.bitlocker?`<div class="warnbox">⚠ BitLocker / device encryption is ON — needed off for the Deployment image.
-      <button class="btn small ghost" style="margin-left:8px" onclick="run('bitlocker_off',[],'manage-bde -off')">Turn BitLocker off</button></div>`:""}
+      <button class="btn small ghost" style="margin-left:8px" onclick="doBitlocker()">Turn BitLocker off</button></div>`:""}
    ${info.wimlib?"":'<div class="warnbox">⚠ bin\\wimlib is missing — download Disk Tool again.</div>'}
    <div class="field"><label>Save to (external USB only — images go to \\DiskToolImages)</label><select id="c-tgt">${opts}</select></div>
    <div class="grid2" style="max-width:1000px">
@@ -919,12 +970,13 @@ async function viewCap(){
    </div>
    <div class="sectionhint" style="margin-top:12px">ESD compression = smallest file, but slow (often 30–90 min). Use the image with “Install to disk”.</div>`;
 }
-function doCap(mode){const L=document.getElementById("c-tgt").value;
+async function doCap(mode){const L=document.getElementById("c-tgt").value;
   if(!L){alert("Plug in an external USB drive (NTFS or exFAT).");return;}
-  if(mode==="deploy"){const t=prompt("This runs Sysprep (removes this PC's identity), RESTARTS and captures.\nAfterwards the PC starts at the Windows welcome screen.\nClose all programs. Type CAPTURE to continue:");
-    if(t===null||t.trim().toUpperCase()!=="CAPTURE"){appendLog("Cancelled.");return;}
+  if(mode==="deploy"){if(!await confirmAction("capture_deploy","This runs Sysprep (removes this PC's identity), RESTARTS and captures.\nAfterwards the PC starts at the Windows welcome screen.\nClose all programs.","CAPTURE"))return;
     run("capture_deploy",[L],"sysprep + WinPE capture -> "+L+":");}
   else run("capture_backup",[L],"wimlib-imagex capture C:\\ --snapshot --solid -> "+L+":");}
+async function doBitlocker(){if(!await confirmAction("bitlocker_off","Turn BitLocker OFF on the Windows drive?\nDecryption runs in the background and can take a while."))return;
+  run("bitlocker_off",[],"manage-bde -off");}
 async function pickFile(id){if(PREVIEW)return;const p=await window.pywebview.api.choose_file();if(p)document.getElementById(id).value=p;}
 
 function applyTheme(t){if(t==="dark"||!t)t="sky";document.documentElement.setAttribute("data-theme",t);
@@ -935,8 +987,10 @@ async function start(){
   PREVIEW=!apiReady();
   let goto="home";
   if(!PREVIEW){try{const i=await api().start_info();if(i.goto)goto=i.goto;
-    document.getElementById("ver").textContent=i.version;applyTheme(i.theme||"dark");}catch(e){}}
-  go(goto);
+    document.getElementById("ver").textContent=i.version;applyTheme(i.theme||"dark");
+    if(i.ui){UI=Object.assign(UI,i.ui);}}catch(e){}}
+  setConsole(UI.console!==false,false);
+  go(goto);applyNavState();
 }
 nav();
 let started=false;

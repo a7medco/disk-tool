@@ -72,7 +72,10 @@ def install(disk_number, mode, gpt, secure_boot, log):
         log("[X] Ventoy2Disk.exe not found. Download Ventoy for Windows from ventoy.net,"
             " extract it into the app's bin\\ventoy folder (or click 'Locate').")
         return 1
-    args = [exe, "VTOYCLI", "/" + mode, "/PhyDrive:%s" % disk_number]
+    from . import guard
+    mode = guard.choice(mode, ("I", "U"), "Ventoy mode")
+    disk_number = guard.check_disk(disk_number)["Number"]
+    args = [exe, "VTOYCLI", "/" + mode, "/PhyDrive:%d" % disk_number]
     if mode == "I":
         if gpt:
             args.append("/GPT")

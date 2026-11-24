@@ -36,6 +36,16 @@ jobs:
           & bin\wimlib\wimlib-imagex.exe info test.esd
           Remove-Item test.esd
 
+      - name: Safety tests (backend guard for destructive operations)
+        run: python -I tests/test_guard.py .
+
+      - name: Safety test on real Windows - the Windows disk must be refused
+        run: >
+          python -c "from core import winops,guard;d=winops.list_disks(0);
+          s=[x for x in d if x.get('IsSystem') or x.get('IsBoot')];print('SYSTEM DISK',[(x['Number'],x.get('FriendlyName'),x.get('Serial')) for x in s]);
+          assert s, 'system disk not detected';r=guard.arm('disk',s[0]['Number'],str(s[0]['Number']));print('ARM C:',r);
+          assert not r['ok'], 'GUARD FAILED: Windows disk was allowed';r=guard.arm('volume','C','C');print('ARM VOL C:',r);assert not r['ok']"
+
       - name: Check bundled YUMI exFAT (official SHA-256)
         shell: pwsh
         run: |
@@ -45,7 +55,7 @@ jobs:
 
       - name: Smoke test on real Windows (disks, license, battery, startup)
         run: >
-          python -c "import time;from core import winops,sysinfo,startup,health,deploy,settings,capture;
+          python -c "import time;from core import winops,sysinfo,startup,health,deploy,settings,capture,guard;
           t=time.time();d=winops.list_disks();print('DISKS',round(time.time()-t,1),'s',d);
           assert d, 'no disks read';
           print('LICENSE',sysinfo.license_info());print('BATTERY',sysinfo.battery());

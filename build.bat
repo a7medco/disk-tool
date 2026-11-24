@@ -2,7 +2,7 @@
 REM ==== Build DiskTool.exe (run once on YOUR Windows PC, needs Python + internet) ====
 cd /d "%~dp0"
 echo [1/3] Installing build tools...
-python -m pip install --upgrade pyinstaller pywebview || goto :err
+python -m pip install --upgrade pyinstaller "pywebview==6.2.1" || goto :err
 echo [2/3] Building DiskTool.exe ...
 python -m PyInstaller --noconfirm --clean --onedir --windowed --uac-admin ^
   --name DiskTool --icon DiskTool.ico ^

@@ -113,6 +113,10 @@ SAN_POLICY = """<?xml version='1.0' encoding='utf-8' standalone='yes'?>
 
 def windows_to_go(src, index, disk_number, log, stop=None):
     """Erase the USB, apply Windows to it and make it bootable on BIOS + UEFI PCs."""
+    from . import guard
+    _d = guard.check_disk(disk_number)
+    guard.file_not_on_disk(src, _d)
+    disk_number = _d["Number"]
     letters = _free_letters(2)
     if not letters:
         log("[X] Not enough free drive letters.")
@@ -168,6 +172,11 @@ def windows_to_go(src, index, disk_number, log, stop=None):
 # Layouts follow Microsoft's "UEFI/GPT-based hard drive partitions" and
 # "BIOS/MBR-based hard drive partitions" docs.
 def install_to_disk(src, index, disk_number, scheme, drivers, compact, log, stop=None, recovery=True):
+    from . import guard
+    _d = guard.check_disk(disk_number)
+    guard.file_not_on_disk(src, _d)
+    disk_number = _d["Number"]
+    scheme = guard.choice(scheme, ("gpt", "mbr"), "partition scheme")
     letters = _free_letters(3)
     if not letters:
         log("[X] Not enough free drive letters.")
