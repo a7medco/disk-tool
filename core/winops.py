@@ -171,51 +171,6 @@ def _ps_lines(script):
     return out.splitlines() if code == 0 else []
 
 
-def device_locks():
-    """Read-only: is this PC clean or managed/locked? Returns list of dicts."""
-    items = []
-
-    # BitLocker (disk encryption)
-    bl = ps_json("Get-BitLockerVolume | Select-Object MountPoint,ProtectionStatus,VolumeStatus")
-    on = [b for b in bl if str(b.get("ProtectionStatus")) in ("1", "On")]
-    if on:
-        items.append({"label": "BitLocker", "value": "On (%s)" % ", ".join(
-            str(b.get("MountPoint")) for b in on), "sev": "warn",
-            "note": "Drive is encrypted - you need the password or recovery key."})
-    else:
-        items.append({"label": "BitLocker", "value": "Off", "sev": "ok", "note": ""})
-
-    # Azure AD / organisation management
-    reg = {}
-    for ln in _ps_lines("dsregcmd /status"):
-        if ":" in ln:
-            k, v = ln.split(":", 1)
-            reg[k.strip()] = v.strip()
-    managed = reg.get("AzureAdJoined", "NO").upper() == "YES" or reg.get("MDMUrl")
-    dom = reg.get("DomainJoined", "NO").upper() == "YES"
-    if managed:
-        items.append({"label": "Organisation (Azure AD / Intune)", "value": "Managed",
-                      "sev": "bad", "note": "A company/school controls this PC via MDM."})
-    elif dom:
-        items.append({"label": "Domain", "value": "Joined", "sev": "warn",
-                      "note": "Joined to a company Active Directory domain."})
-    else:
-        items.append({"label": "Organisation / Domain", "value": "None", "sev": "ok", "note": ""})
-
-    # Secure Boot
-    sb = _ps_lines("try{[string](Confirm-SecureBootUEFI)}catch{'NA'}")
-    sbv = (sb[0].strip() if sb else "NA")
-    items.append({"label": "Secure Boot",
-                  "value": {"True": "On", "False": "Off"}.get(sbv, "Not supported (legacy BIOS)"),
-                  "sev": "info", "note": ""})
-
-    # Windows activation
-    act = _ps_lines('cscript //nologo "%windir%\\System32\\slmgr.vbs" /xpr')
-    actv = next((l.strip() for l in act if l.strip()), "Unknown")
-    items.append({"label": "Windows activation", "value": actv, "sev": "info", "note": ""})
-    return items
-
-
 def list_local_users():
     users = ps_json("Get-LocalUser | Where-Object Enabled | Select-Object Name")
     return [u.get("Name") for u in users if u.get("Name")]
@@ -241,51 +196,6 @@ def assign_remove_letter(disk_number, letter, action, log):
     verb = "assign letter=%s" % letter if action == "assign" else "remove letter=%s" % letter
     script = "select disk %s\nselect partition 1\n%s\nexit\n" % (disk_number, verb)
     return diskpart_stream(script, log)
-
-
-# ---- VeraCrypt (Windows) --------------------------------------------------
-VC_DIRS = [r"C:\Program Files\VeraCrypt", r"C:\Program Files (x86)\VeraCrypt"]
-
-
-def _vc(exe):
-    """Installed VeraCrypt first, else the portable copy shipped in bin\\veracrypt."""
-    for d in VC_DIRS:
-        p = _osp.join(d, exe)
-        if _osp.exists(p):
-            return p
-    from .paths import DATA
-    arch = (os.environ.get("PROCESSOR_ARCHITEW6432") or
-            os.environ.get("PROCESSOR_ARCHITECTURE") or "").upper()
-    suffix = "-arm64" if arch == "ARM64" else "-x64"
-    p = _osp.join(DATA, "bin", "veracrypt", exe.replace(".exe", suffix + ".exe"))
-    return p if _osp.exists(p) else None
-
-
-def veracrypt_create(path, size, fs, password, log):
-    exe = _vc("VeraCrypt Format.exe")
-    if not exe:
-        log("[X] VeraCrypt not found (Program Files or bin\\veracrypt).")
-        return 1
-    return run_stream([exe, "/create", path, "/size", size, "/password", password,
-                       "/encryption", "AES", "/hash", "sha512", "/filesystem", fs,
-                       "/quick", "/silent", "/force"], log)
-
-
-def veracrypt_mount(path, letter, password, log):
-    exe = _vc("VeraCrypt.exe")
-    if not exe:
-        log("[X] VeraCrypt not found (Program Files or bin\\veracrypt).")
-        return 1
-    return run_stream([exe, "/q", "/s", "/v", path, "/l", letter, "/p", password], log)
-
-
-def veracrypt_dismount(letter, log):
-    exe = _vc("VeraCrypt.exe")
-    if not exe:
-        log("[X] VeraCrypt not found (Program Files or bin\\veracrypt).")
-        return 1
-    args = [exe, "/q", "/u"] + ([letter] if letter else [])
-    return run_stream(args, log)
 
 
 # ---- bootable Windows USB -------------------------------------------------
@@ -445,30 +355,6 @@ def memtest_results():
                     "msg": (r.get("Message") or "").strip().splitlines()[0][:160]
                     if r.get("Message") else ""})
     return out
-
-
-# ---- right-click context menu (registry) ----------------------------------
-MENU_ITEMS = [("Format", "format"), ("FastCopy", "copy"), ("Repair", "repair")]
-MENU_BASE = r"HKCU\Software\Classes\Drive\shell"
-
-
-def install_context_menu(log):
-    from . import paths
-    for key, goto in MENU_ITEMS:
-        exe, cmd = paths.launch_cmd("--goto", goto)
-        k = MENU_BASE + "\\DiskTool" + key
-        run_stream(["reg", "add", k, "/ve", "/d", "Disk Tool: " + key, "/f"], log)
-        run_stream(["reg", "add", k, "/v", "Icon", "/d", exe, "/f"], log)
-        run_stream(["reg", "add", k + "\\command", "/ve", "/d", cmd, "/f"], log)
-    log("[OK] Right-click a drive in Explorer (Windows 11: 'Show more options').")
-    return 0
-
-
-def remove_context_menu(log):
-    for key, _ in MENU_ITEMS:
-        run_stream(["reg", "delete", MENU_BASE + "\\DiskTool" + key, "/f"], log)
-    log("[OK] Removed.")
-    return 0
 
 
 def save_image(disk_number, size_bytes, out_path, log, stop=None):

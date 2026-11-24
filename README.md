@@ -16,7 +16,7 @@ build.bat
 
 جاهز جوه النسخة 2.2:
 - `bin\ventoy\ventoy-1.1.18` — للـ Multi-ISO.
-- `bin\veracrypt` — VeraCrypt 1.26.31 Portable، بيشتغل لو مش متسطب.
+- `bin\yumi\YUMI-exFAT-1.0.4.3.exe` — صفحة YUMI exFAT (منفصلة عن Ventoy).
 - `redist\MicrosoftEdgeWebview2Setup.exe` جوه الـ exe — لو الجهاز مفيهوش WebView2 بيسطبه لوحده (محتاج نت)، ولو فشل بيفتح الواجهة البسيطة.
 
 ## التشغيل من الكود (الواجهة الحلوة) — لازم Administrator
@@ -42,7 +42,7 @@ python gui.py
 
 ## الوظائف
 
-- الهيكل: قائمة تلقائية من فولدر actions، ورفع صلاحية الأدمن، وتلوين.
+- الهيكل: واجهة app.py (pywebview)، ورفع صلاحية الأدمن، وواجهة احتياطية gui.py.
 - طبقة أوامر: PowerShell و diskpart، مع قراءة مخرجات JSON.
 - عرض الأقراص والصحة (SMART) — `Get-Disk` + `Get-PhysicalDisk`.
 - حماية: قرص الإقلاع مخفي عن عمليات المسح.
@@ -60,22 +60,18 @@ python gui.py
 | Drives | HDD repair: ملفات ويندوز | DISM /RestoreHealth + sfc /scannow |
 | Drives | نسخ سريع | robocopy |
 | Bootable | فلاشة ويندوز | diskpart + robocopy + DISM /Split-Image |
-| Bootable | فلاشة Multi-ISO | Ventoy2Disk.exe VTOYCLI /I أو /U |
+| MultiBootable ISO Create | Ventoy | Ventoy2Disk.exe VTOYCLI /I أو /U |
+| MultiBootable ISO Create | YUMI exFAT | بيفتح YUMI في نافذته |
 | Bootable | كتابة IMG خام | PhysicalDrive |
-| Windows | اختبار الرامات + آخر نتيجة | bcdedit {memdiag} + سجل MemoryDiagnostics-Results |
+| Hardware checks | اختبار الرامات + آخر نتيجة | bcdedit {memdiag} + سجل MemoryDiagnostics-Results |
 | Windows | برامج بدء التشغيل | StartupApproved (نفس Task Manager) |
 | Windows | نسخ/استرجاع التعريفات | dism /export-driver + pnputil /add-driver |
-| Windows | أقفال الجهاز | BitLocker + dsregcmd + Secure Boot |
 | Windows | باسوورد حساب محلي | net user |
-| Windows | تشفير | VeraCrypt |
-| Windows | كليك يمين على الدرايف | HKCU\Software\Classes\Drive\shell |
 
 ## Ventoy للـ Multi-ISO
 
 نزّل نسخة ويندوز من ventoy.net وفكّها جوه `bin\ventoy`، أو اختار مكانها من زرار Locate.
 
-## إضافة وظيفة جديدة
+## الأمان
 
-انسخ `actions\_template.py` باسم جديد، غيّر ORDER و TITLE، واكتب الكود في run_action().
-
-
+أي عملية بتمسح أو بتغيّر بيانات لازم تتأكد مرتين: في الواجهة، وبعدها `core/guard.py` بيراجع من الأول قبل التنفيذ. بيرفض هارد الويندوز، وهارد الإقلاع، والهارد اللي البرنامج شغال منه. تفاصيل الحماية في أول الملف.

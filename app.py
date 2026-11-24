@@ -17,7 +17,7 @@ sys.path.insert(0, HERE)
 
 from core import capture, deploy, guard, health, watch, paths, settings, startup, sysinfo, system, ventoy, winops, yumi   # noqa: E402
 
-VERSION = "2.9.0"
+VERSION = "2.9.1"
 
 
 class Api:
@@ -128,9 +128,6 @@ class Api:
         return True
 
     # read-only, returns data straight to the UI
-    def device_locks(self):
-        return winops.device_locks()
-
     def list_local_users(self):
         return winops.list_local_users()
 
@@ -145,18 +142,6 @@ class Api:
 
     def letter(self, number, letter, action):
         self._bg(lambda: winops.assign_remove_letter(number, letter, action, self._emit))  # checked in winops
-        return True
-
-    def vc_create(self, path, size, fs, pw):
-        self._bg(lambda: winops.veracrypt_create(path, size, fs, pw, self._emit))
-        return True
-
-    def vc_mount(self, path, letter, pw):
-        self._bg(lambda: winops.veracrypt_mount(path, letter, pw, self._emit))
-        return True
-
-    def vc_dismount(self, letter):
-        self._bg(lambda: winops.veracrypt_dismount(letter, self._emit))
         return True
 
     def bootable_usb(self, iso, number, letter):
@@ -198,13 +183,6 @@ class Api:
 
     def memtest_results(self):
         return winops.memtest_results()
-
-    def menu_install(self):
-        self._bg(lambda: winops.install_context_menu(self._emit))
-        return True
-
-    def menu_remove(self):
-        self._bg(lambda: winops.remove_context_menu(self._emit)); return True
 
     # ---- health & repair ----
     def smart_details(self):

@@ -50,9 +50,7 @@ class App(tk.Tk):
             ("Repair (chkdsk)", self.view_repair),
             ("Fast copy", self.view_fastcopy),
             ("Bootable USB", self._soon),
-            ("Device locks", self._soon),
             ("Reset password", self._soon),
-            ("Encrypt (VeraCrypt)", self._soon),
         ]
         self.btns = []
         for name, fn in self.items:
