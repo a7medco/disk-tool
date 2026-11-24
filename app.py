@@ -15,9 +15,9 @@ import threading
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from core import capture, deploy, health, watch, paths, settings, startup, sysinfo, system, ventoy, winops   # noqa: E402
+from core import capture, deploy, health, watch, paths, settings, startup, sysinfo, system, ventoy, winops, yumi   # noqa: E402
 
-VERSION = "2.8.1"
+VERSION = "2.8.2"
 
 
 class Api:
@@ -80,6 +80,7 @@ class Api:
         types = {"iso": ("ISO (*.iso)", "All files (*.*)"),
                  "img": ("Disk images (*.img;*.iso;*.bin;*.raw)", "All files (*.*)"),
                  "exe": ("Ventoy2Disk (Ventoy2Disk.exe)", "Programs (*.exe)"),
+                 "yumi": ("YUMI exFAT (YUMI*.exe)", "Programs (*.exe)"),
                  "win": ("Windows image (*.iso;*.wim;*.esd)", "All files (*.*)")}[kind]
         res = self._window.create_file_dialog(webview.OPEN_DIALOG, file_types=types)
         return res[0] if res else ""
@@ -205,6 +206,20 @@ class Api:
 
     def ventoy_list(self, number):
         return ventoy.list_isos(number)
+
+    # ---- multi-ISO (YUMI exFAT) - separate from Ventoy ----
+    def yumi_info(self):
+        return yumi.info()
+
+    def yumi_locate(self):
+        p = self.choose_file("yumi")
+        return yumi.set_exe(p) and p or ""
+
+    def yumi_launch(self):
+        return yumi.launch(self._emit)
+
+    def yumi_page(self):
+        return yumi.open_page()
 
     # ---- OOBE & Windows To Go ----
     def sysprep(self, generalize, after):

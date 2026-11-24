@@ -215,7 +215,7 @@
   </div>
 <script>
 const FS=["NTFS","exFAT","FAT32"], SCHEMES=["GPT","MBR"];
-const ICONS={"home": "M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z", "disks": "M4 4h16v7H4zM4 13h16v7H4zM8 7.5h.01M8 16.5h.01", "format": "M20 20H9l-6-6 9-9 8 8-6 7M7 11l6 6", "part": "M12 3v9h9A9 9 0 1 1 12 3zM15 3.6A9 9 0 0 1 20.4 9H15z", "repair": "M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z", "copy": "M9 9h11v11H9zM5 15H4V4h11v1", "usb": "M9 2h6v5H9zM7 7h10v9a4 4 0 0 1-4 4h-2a4 4 0 0 1-4-4z", "multi": "M12 3l9 5-9 5-9-5zM3 12.5l9 5 9-5M3 17l9 5 9-5", "img": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z", "wtg": "M3 4h18v12H3zM8 21h8M12 16v5", "inst": "M12 3v10M8 9l4 4 4-4M4 15v5h16v-5", "oobe": "M4 12a8 8 0 0 1 14-5.3L20 9M20 4v5h-5M20 12a8 8 0 0 1-14 5.3L4 15M4 20v-5h5", "cap": "M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z", "ram": "M5 7h14v10H5zM9 7V4M12 7V4M15 7V4M9 20v-3M12 20v-3M15 20v-3", "battery": "M3 8h15v8H3zM21 11v2M6 11v2M9 11v2", "license": "M13 10a4 4 0 1 0-1.2 2.8L20 21M16.5 17.5l2-2", "startup": "M12 3v9M6.3 6.3a8 8 0 1 0 11.4 0", "drivers": "M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10", "locks": "M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4", "pass": "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0", "enc": "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z", "menu": "M4 6h16M4 12h16M4 18h10"};
+const ICONS={"home": "M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z", "disks": "M4 4h16v7H4zM4 13h16v7H4zM8 7.5h.01M8 16.5h.01", "format": "M20 20H9l-6-6 9-9 8 8-6 7M7 11l6 6", "part": "M12 3v9h9A9 9 0 1 1 12 3zM15 3.6A9 9 0 0 1 20.4 9H15z", "repair": "M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z", "copy": "M9 9h11v11H9zM5 15H4V4h11v1", "usb": "M9 2h6v5H9zM7 7h10v9a4 4 0 0 1-4 4h-2a4 4 0 0 1-4-4z", "multi": "M12 3l9 5-9 5-9-5zM3 12.5l9 5 9-5M3 17l9 5 9-5", "yumi": "M4 4h16v16H4zM8 9l4 4 4-4M12 13v5", "img": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z", "wtg": "M3 4h18v12H3zM8 21h8M12 16v5", "inst": "M12 3v10M8 9l4 4 4-4M4 15v5h16v-5", "oobe": "M4 12a8 8 0 0 1 14-5.3L20 9M20 4v5h-5M20 12a8 8 0 0 1-14 5.3L4 15M4 20v-5h5", "cap": "M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z", "ram": "M5 7h14v10H5zM9 7V4M12 7V4M15 7V4M9 20v-3M12 20v-3M15 20v-3", "battery": "M3 8h15v8H3zM21 11v2M6 11v2M9 11v2", "license": "M13 10a4 4 0 1 0-1.2 2.8L20 21M16.5 17.5l2-2", "startup": "M12 3v9M6.3 6.3a8 8 0 1 0 11.4 0", "drivers": "M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10", "locks": "M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4", "pass": "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0", "enc": "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z", "menu": "M4 6h16M4 12h16M4 18h10"};
 const svg=(id,sz)=>`<svg viewBox="0 0 24 24" width="${sz||17}" height="${sz||17}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${ICONS[id]||ICONS.menu}"/></svg>`;
 const VIEWS=[
   {grp:"Drives"},
@@ -227,10 +227,12 @@ const VIEWS=[
   {id:"copy",    name:"Fast copy",          ic:"⇄", fn:viewCopy},
   {grp:"Bootable"},
   {id:"usb",     name:"Windows USB",        ic:"▸", fn:viewUSB},
-  {id:"multi",   name:"Multi-ISO USB",      ic:"❖", fn:viewMulti},
   {id:"img",     name:"IMG write / save",   ic:"◈", fn:viewImg},
   {id:"wtg",     name:"Windows To Go",      ic:"⇪", fn:viewWtg},
   {id:"inst",    name:"Install to disk",    ic:"⤓", fn:viewInst},
+  {grp:"MultiBootable ISO Create"},
+  {id:"multi",   name:"Ventoy",             ic:"❖", fn:viewMulti},
+  {id:"yumi",    name:"YUMI exFAT",         ic:"❖", fn:viewYumi},
   {grp:"Windows"},
   {id:"oobe",    name:"Reset to OOBE", ic:"↺", fn:viewOobe},
   {id:"cap",     name:"Capture image",      ic:"◉", fn:viewCap},
@@ -574,7 +576,7 @@ function doRepair(){
 
 /* ---- Multi-ISO (Ventoy) ---- */
 async function viewMulti(){
-  setTitle("Multi-ISO USB","One USB, many systems: Windows, Linux, WinPE, tools — pick from a boot menu (Ventoy).");
+  setTitle("Ventoy — Multi-ISO USB","One USB, many systems: Windows, Linux, WinPE, tools — pick from a boot menu (Ventoy).");
   await getDisks();
   const info=PREVIEW?{exe:""}:await api().ventoy_info();
   content().innerHTML=`
@@ -613,6 +615,32 @@ async function listIsos(){const d=muDisk();if(!d)return;
   document.getElementById("m-list").innerHTML=l.length?'<div class="card"><table><tbody>'+
     l.map(x=>`<tr><td>${x.name}</td><td style="text-align:right">${GB(x.size)}</td></tr>`).join("")+'</tbody></table></div>'
     :'<div class="empty">No images on the USB yet (or it is not a Ventoy USB).</div>';}
+
+/* ---- Multi-ISO (YUMI exFAT) - separate from Ventoy ---- */
+async function viewYumi(){
+  setTitle("YUMI exFAT — Multi-ISO USB","Multiboot USB on exFAT: files over 4 GB, BIOS + UEFI, Linux persistence. Runs in its own window.");
+  const i=PREVIEW?{exe:"bin\\yumi\\YUMI-exFAT-1.0.4.3.exe",version:"1.0.4.3",verified:true}:await api().yumi_info();
+  const st=!i.exe?'<span style="color:#f87171">not found</span>'
+    :i.verified?'<span style="color:var(--g)">✓ official '+i.version+'</span>':'<span style="color:#fbbf24">unknown build (not the official 1.0.4.3 file)</span>';
+  content().innerHTML=`
+   <div class="card box" style="margin-bottom:16px;max-width:760px">
+     <div class="row" style="justify-content:space-between">
+       <div><b>YUMI exFAT:</b> <span class="mono" id="y-exe">${i.exe||"download from yumiusb.com into bin\\yumi"}</span> &nbsp; ${st}</div>
+       <div class="row"><button class="btn ghost small" onclick="locateYumi()">Locate…</button>
+         <button class="btn ghost small" onclick="yumiPage()">Official site</button></div></div></div>
+   <div class="card box" style="max-width:760px">
+     <h3>Open YUMI exFAT</h3>
+     <div class="sectionhint">Pick the USB, prepare it, then add ISOs — all inside YUMI's own window.</div>
+     <div class="sectionhint" style="color:#fbbf24">⚠ Preparing a USB in YUMI erases everything on it.
+       Use YUMI <b>or</b> the Ventoy page for a USB — not both on the same stick.</div>
+     <div class="row" style="margin-top:10px"><button class="btn" onclick="openYumi()">Open YUMI exFAT</button></div></div>`;
+}
+async function locateYumi(){if(PREVIEW)return;const p=await api().yumi_locate();
+  if(p)viewYumi();else appendLog("[X] Pick the YUMI-exFAT .exe file.");}
+async function yumiPage(){if(!PREVIEW)await api().yumi_page();}
+async function openYumi(){if(PREVIEW){appendLog("> YUMI-exFAT-1.0.4.3.exe (preview)");return;}
+  if(!confirm("Open YUMI exFAT?\n\nInside YUMI, preparing a USB ERASES it. Double-check the drive letter there."))return;
+  appendLog("> YUMI-exFAT.exe");await api().yumi_launch();}
 
 /* ---- Write IMG ---- */
 async function viewImg(){

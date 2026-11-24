@@ -36,6 +36,13 @@ jobs:
           & bin\wimlib\wimlib-imagex.exe info test.esd
           Remove-Item test.esd
 
+      - name: Check bundled YUMI exFAT (official SHA-256)
+        shell: pwsh
+        run: |
+          $h = (Get-FileHash bin\yumi\YUMI-exFAT-1.0.4.3.exe -Algorithm SHA256).Hash.ToLower()
+          if ($h -ne "c05319c4ff4f33d7284f105ffb8a716957ee277f01df186ed11949a9c30c345b") { throw "YUMI hash mismatch: $h" }
+          python -c "from core import yumi; i=yumi.info(); print('YUMI', i); assert i['verified']"
+
       - name: Smoke test on real Windows (disks, license, battery, startup)
         run: >
           python -c "import time;from core import winops,sysinfo,startup,health,deploy,settings,capture;
