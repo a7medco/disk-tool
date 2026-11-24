@@ -21,14 +21,17 @@
     --head-bg:linear-gradient(180deg,#081022,#0c1630);
   }
   [data-theme="light"]{
-    --g:#0284c7; --g-hi:#0ea5e9; --g-ink:#ffffff; --glow:rgba(14,165,233,.25);
-    --bg1:#f5f9fd; --bg2:#e6eff8; --panel:#ffffff; --panel-2:#f3f8fc; --line:#d6e2ee;
-    --ink:#0f1b2d; --muted:#5b6b82; --navi:#2b3a52; --nav-act:#e1eefa;
-    --ok:#059669; --good:#059669; --warn:#d97706; --bad:#dc2626;
-    --console:#0b1424; --console-ink:#dbe7f5; --console-cmd:#7dd3fc;
-    --field:#ffffff; --shadow:0 1px 2px rgba(15,27,45,.05),0 8px 22px rgba(15,27,45,.07);
-    --head-bg:linear-gradient(180deg,#ffffff,#f0f6fc);
+    --g:#0369a1; --g-hi:#0284c7; --g-ink:#ffffff; --glow:rgba(2,132,199,.22);
+    --bg1:#e9eff6; --bg2:#dde6f0; --panel:#ffffff; --panel-2:#f1f5fa; --line:#b9c8d9;
+    --ink:#0b1626; --muted:#334155; --navi:#132238; --nav-act:#d3e4f5;
+    --ok:#047857; --good:#047857; --warn:#b45309; --bad:#b91c1c;
+    --console:#0b1424; --console-ink:#e6eef8; --console-cmd:#7dd3fc;
+    --field:#ffffff; --shadow:0 1px 2px rgba(11,22,38,.08),0 6px 16px rgba(11,22,38,.08);
+    --head-bg:#ffffff;
   }
+  [data-theme="light"] .btn.ghost{background:#ffffff;border:1px solid #8fa6bf;color:#0b1626}
+  [data-theme="light"] .nav .grp{color:#0369a1}
+  [data-theme="light"] .side{background:#f6f9fc}
   [data-theme="nvidia"]{
     --g:#76b900; --g-hi:#8fd400; --g-ink:#0b0f02; --glow:rgba(118,185,0,.3);
     --bg1:#16181b; --bg2:#2a2d33; --panel:#1f2226; --panel-2:#272a30; --line:#363a41;
@@ -125,7 +128,9 @@
   .btn.stop{background:var(--bad);color:#fff}
   .btn.small{padding:6px 12px;font-size:11.5px}
 
-  table{width:100%;border-collapse:collapse}
+  table{width:100%;border-collapse:collapse;table-layout:fixed}
+  td,th{overflow:hidden;text-overflow:ellipsis}
+  td.model{white-space:nowrap}
   thead th{text-align:left;font-size:13px;font-weight:600;color:var(--ink);padding:12px 16px;border-bottom:1px solid var(--line)}
   tbody td{padding:12px 16px;border-bottom:1px solid var(--line);font-size:13.5px}
   tbody tr:last-child td{border-bottom:0}
@@ -150,7 +155,7 @@
   .warnbox{background:rgba(240,160,32,.10);border:1px solid rgba(240,160,32,.45);color:var(--ink);
     border-radius:4px;padding:11px 14px;font-size:13px;margin-bottom:16px;max-width:640px}
   .sectionhint{color:var(--muted);font-size:12.5px;margin:-2px 0 14px}
-  .mono{font-family:Consolas,monospace;font-size:12px;color:var(--muted);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mono{font-family:Consolas,monospace;font-size:12px;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
   .box{padding:18px 20px}
   .box h3{font-size:15px;font-weight:700;margin-bottom:10px}
@@ -180,7 +185,7 @@
 </head>
 <body>
   <header class="top">
-    <div><h1>Disk Tool</h1><p>Windows service toolkit · Version <span id="ver">2.8</span></p></div>
+    <div><h1>Disk Tool</h1><p>Windows service toolkit · Version <span id="ver">2.8.1</span></p></div>
     <div class="brandmark">
       <div class="emblem">A</div><div class="wordmark">ABUZAID</div>
       <select class="themesel" id="themesel" onchange="setTheme(this.value)">
@@ -289,7 +294,7 @@ async function getDisks(fresh){
      Volumes:[{Letter:"E",Size:32e9,Free:9.4e9,Label:"USB",FS:"exFAT",Type:"IFS"}]},
   ];return DISKS;}
   try{const r=await api().list_disks(!!fresh);
-    if(fresh||r.took>5)appendLog("Disks read in "+r.took+" s"+(r.rows.length?"":" — none found"));
+    if(r.took)appendLog("Disks read in "+r.took+" s"+(r.rows.length?"":" — none found"));
     DISKS=r.rows||[];return DISKS;}
   catch(e){appendLog("[X] Could not read the disks: "+(e.message||e));return [];}
 }
@@ -680,7 +685,7 @@ async function viewStartup(){
   setTitle("Startup apps","Stop programs from starting with Windows — same switch as Task Manager, fully reversible.");
   content().innerHTML=`<div class="row" style="margin-bottom:14px"><button class="btn" onclick="viewStartup()">Refresh</button>
      <button class="btn ghost" onclick="stopAll()">Disable all (except security)</button></div>
-   <div class="card"><table><thead><tr><th>Program</th><th>Command</th><th>From</th><th>Status</th><th></th></tr></thead>
+   <div class="card"><table><colgroup><col style="width:24%"><col><col style="width:13%"><col style="width:12%"><col style="width:110px"></colgroup><thead><tr><th>Program</th><th>Command</th><th>From</th><th>Status</th><th></th></tr></thead>
    <tbody id="st"><tr><td colspan="5" class="empty">Reading…</td></tr></tbody></table></div>`;
   const l=PREVIEW?[{id:"hkcu|OneDrive",name:"OneDrive",cmd:'"C:\\Users\\x\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive.exe" /background',where:"User",enabled:true},
     {id:"hklm|SecurityHealth",name:"SecurityHealth",cmd:"%windir%\\system32\\SecurityHealthSystray.exe",where:"All users",enabled:true},

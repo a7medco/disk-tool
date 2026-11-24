@@ -17,7 +17,7 @@ sys.path.insert(0, HERE)
 
 from core import capture, deploy, health, watch, paths, settings, startup, sysinfo, system, ventoy, winops   # noqa: E402
 
-VERSION = "2.8"
+VERSION = "2.8.1"
 
 
 class Api:
@@ -55,7 +55,7 @@ class Api:
 
     # ---- called from JS ----
     def list_disks(self, fresh=False):
-        rows = winops.list_disks(0 if fresh else 15)
+        rows = winops.list_disks(0 if fresh else 600)
         return {"rows": rows, "took": winops.disks_took()}
 
     def format_disk(self, number, fs, scheme, label):

@@ -62,15 +62,20 @@ def diskpart_stream(script_text, log):
 # ---- high level operations ------------------------------------------------
 
 DISKS_PS = r"""
-$ext=@{}
-foreach($dd in @(Get-CimInstance Win32_DiskDrive -ErrorAction SilentlyContinue)){
-  $usb=$false; $cur=[string]$dd.PNPDeviceID
-  for($k=0; $k -lt 8 -and $cur; $k++){
-    if($cur -match '^USB'){ $usb=$true; break }
-    $cur=[string](Get-PnpDeviceProperty -InstanceId $cur -KeyName DEVPKEY_Device_Parent -ErrorAction SilentlyContinue).Data
-  }
-  $ext[[int]$dd.Index]=@{usb=$usb; media=[string]$dd.MediaType}
+$dd=@(Get-CimInstance Win32_DiskDrive -ErrorAction SilentlyContinue)
+$cur=@{}; $usb=@{}
+foreach($x in $dd){ $cur[[int]$x.Index]=[string]$x.PNPDeviceID }
+for($k=0; $k -lt 8; $k++){
+  foreach($i in @($cur.Keys)){ if($cur[$i] -match '^USB'){ $usb[$i]=$true; $cur[$i]=$null } }
+  $ids=@($cur.Keys | Where-Object { $cur[$_] } | ForEach-Object { $cur[$_] })
+  if($ids.Count -eq 0){ break }
+  $map=@{}
+  Get-PnpDeviceProperty -InstanceId $ids -KeyName DEVPKEY_Device_Parent -ErrorAction SilentlyContinue |
+    ForEach-Object { $map[[string]$_.InstanceId]=[string]$_.Data }
+  foreach($i in @($cur.Keys)){ if($cur[$i]){ $cur[$i]=$map[$cur[$i]] } }
 }
+$ext=@{}
+foreach($x in $dd){ $ext[[int]$x.Index]=@{usb=[bool]$usb[[int]$x.Index]; media=[string]$x.MediaType} }
 $h=@{}; Get-PhysicalDisk -ErrorAction SilentlyContinue | ForEach-Object { $h[[string]$_.DeviceId]=[string]$_.HealthStatus }
 $d=@(Get-Disk -ErrorAction SilentlyContinue | ForEach-Object {
   $n=[int]$_.Number; $e=$ext[$n]; $bus=[string]$_.BusType
@@ -102,12 +107,14 @@ _disk_cache = {"t": 0.0, "rows": None}
 _disk_lock = __import__("threading").Lock()
 
 
-def list_disks(max_age=15):
+def list_disks(max_age=600):
     """All disks. Cached for a few seconds - several pages ask for the list."""
     import time
     with _disk_lock:
         if _disk_cache["rows"] is not None and time.time() - _disk_cache["t"] < max_age:
+            _disk_cache["cached"] = True
             return _disk_cache["rows"]
+        _disk_cache["cached"] = False
         t0 = time.time()
         rows = ps_json(DISKS_PS)
         _disk_cache.update(t=time.time(), rows=rows, took=round(time.time() - t0, 1))
@@ -115,7 +122,7 @@ def list_disks(max_age=15):
 
 
 def disks_took():
-    return _disk_cache.get("took", 0)
+    return 0 if _disk_cache.get("cached") else _disk_cache.get("took", 0)
 
 
 def format_disk(number, fs, scheme, label, log):
