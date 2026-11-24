@@ -67,15 +67,21 @@
     border-right:1px solid var(--line)}
   .nav{display:flex;flex-direction:column;gap:1px;flex:1 1 auto;overflow-y:auto;min-height:0}
   .nav::-webkit-scrollbar{width:6px}.nav::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
-  .nav .grp{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:transparent;
-    font:inherit;font-size:10.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;cursor:pointer;
-    color:var(--g);padding:12px 12px 5px;border-radius:4px;text-align:left}
+  .nav .grp{display:flex;align-items:center;justify-content:space-between;width:100%;flex:0 0 auto;
+    font-size:10.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;cursor:pointer;
+    color:var(--g);padding:10px 12px;margin-top:2px;border-radius:4px;user-select:none;-webkit-user-select:none;
+    outline:none;transition:background .12s}
+  .nav .grp:focus-visible{box-shadow:0 0 0 2px var(--g)}
+  .nav .grp > span{pointer-events:none}
+  .nav .grp > span:first-child{flex:1;min-width:0;line-height:1.35}
   .nav .grp:hover{background:var(--nav-act)}
-  .nav .grp .chev{transition:transform .15s;font-size:11px;color:var(--muted)}
+  .nav .grp .chev{transition:transform .22s ease;font-size:11px;color:var(--muted)}
   .nav .grp.closed .chev{transform:rotate(-90deg)}
-  .nav .grp .cnt{margin-left:auto;margin-right:8px;font-size:10px;color:var(--muted);font-weight:600;letter-spacing:0}
-  .nav .gitems{display:flex;flex-direction:column;gap:1px}
-  .nav .gitems.closed{display:none}
+  .nav .grp .cnt{margin:0 8px 0 8px;font-size:10px;color:var(--muted);font-weight:600;letter-spacing:0}
+  .nav .gitems{display:grid;grid-template-rows:1fr;transition:grid-template-rows .22s ease,opacity .18s ease;opacity:1;flex:0 0 auto}
+  .nav .gitems.closed{grid-template-rows:0fr;opacity:0}
+  .nav .gin{display:flex;flex-direction:column;gap:1px;overflow:hidden;min-height:0}
+  .nav .gitems.closed .gin{visibility:hidden;transition:visibility 0s .22s}
   .nav button{display:flex;align-items:center;gap:11px;width:100%;border:0;cursor:pointer;
     background:transparent;color:var(--navi);font:inherit;font-size:14px;text-align:left;
     padding:8px 12px;border-radius:4px;transition:.12s;border-left:3px solid transparent}
@@ -200,7 +206,7 @@
 </head>
 <body>
   <header class="top">
-    <div><h1>Disk Tool</h1><p>Windows service toolkit · Version <span id="ver">2.9.1</span></p></div>
+    <div><h1>Disk Tool</h1><p>Windows service toolkit · Version <span id="ver">2.9.2</span></p></div>
     <div class="brandmark">
       <div class="emblem">A</div><div class="wordmark">ABUZAID</div>
       <select class="themesel" id="themesel" onchange="setTheme(this.value)">
@@ -265,16 +271,20 @@ let busy=false;
 const api=()=>window.pywebview.api;
 
 /* Sidebar: collapsible groups. Open groups are remembered (settings.json via the backend). */
-let UI={open:null,console:true};
+let UI={console:true};
 function nav(){
   const n=document.getElementById("nav");let box=null,head=null,cnt=0;
   VIEWS.forEach(v=>{
     if(v.grp){if(head)head.querySelector(".cnt").textContent=cnt;cnt=0;
-      head=document.createElement("button");head.className="grp closed";head.dataset.grp=v.grp;
+      head=document.createElement("div");head.className="grp closed";head.dataset.grp=v.grp;
+      head.setAttribute("role","button");head.tabIndex=0;
       head.innerHTML=`<span>${v.grp}</span><span class="cnt"></span><span class="chev">▾</span>`;
-      box=document.createElement("div");box.className="gitems closed";box.dataset.grp=v.grp;
-      head.onclick=()=>setGroup(v.grp,box.classList.contains("closed"),true);
-      n.appendChild(head);n.appendChild(box);return;}
+      const wrap=document.createElement("div");wrap.className="gitems closed";wrap.dataset.grp=v.grp;
+      box=document.createElement("div");box.className="gin";wrap.appendChild(box);
+      const g=v.grp;
+      head.addEventListener("click",()=>toggleGroup(g));
+      head.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();toggleGroup(g);}});
+      n.appendChild(head);n.appendChild(wrap);return;}
     const b=document.createElement("button");cnt++;
     b.innerHTML=`${svg(v.id)}<span>${v.name}</span>`;
     b.onclick=()=>{if(busy){appendLog("[!] Wait for the current job to finish (or press Stop).");return;}active(b);CUR=v.id;v.fn();};
@@ -282,13 +292,17 @@ function nav(){
   });
   if(head)head.querySelector(".cnt").textContent=cnt;
 }
-function setGroup(g,open,save){
-  document.querySelectorAll(`.nav [data-grp="${g}"]`).forEach(e=>e.classList.toggle("closed",!open));
-  if(save){UI.open=[...document.querySelectorAll(".nav .gitems:not(.closed)")].map(e=>e.dataset.grp);saveUI();}}
-function applyNavState(){const act=document.querySelector(".nav button.active");
-  const ag=act&&act.parentElement.dataset.grp;
-  document.querySelectorAll(".nav .gitems").forEach(b=>{const g=b.dataset.grp;
-    setGroup(g,UI.open?UI.open.includes(g)||g===ag:g===ag,false);});}
+/* Accordion: one group open at a time (a technician works on one job). Nothing is remembered:
+   every start opens only the group of the current page. */
+function setGroup(g,open){
+  document.querySelectorAll(`.nav [data-grp="${g}"]`).forEach(e=>e.classList.toggle("closed",!open));}
+function openOnly(g){document.querySelectorAll(".nav .grp").forEach(h=>setGroup(h.dataset.grp,h.dataset.grp===g));}
+function toggleGroup(g){const h=document.querySelector(`.nav .grp[data-grp="${g}"]`);
+  if(h.classList.contains("closed")){openOnly(g);
+    setTimeout(()=>h.scrollIntoView({block:"nearest",behavior:"smooth"}),230);}
+  else setGroup(g,false);}
+function groupOf(b){const w=b&&b.closest(".gitems");return w?w.dataset.grp:"";}
+function applyNavState(){openOnly(groupOf(document.querySelector(".nav button.active")));}
 function saveUI(){if(!PREVIEW)try{api().set_ui(UI);}catch(e){}}
 /* Output console: collapsible; opens by itself when a job starts or something fails. */
 function setConsole(open,save){document.querySelector(".console-wrap").classList.toggle("closed",!open);
@@ -299,7 +313,7 @@ function go(id){const v=VIEWS.find(x=>x.id===id)||VIEWS[1];CUR=v.id;
   const b=document.querySelector(`.nav button[data-id="${v.id}"]`);active(b);b.scrollIntoView({block:"nearest"});v.fn();}
 window.onDisksHook=()=>{if(CUR==="home")viewHome();else if(CUR==="disks")viewDisks();};
 function active(b){document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");
-  const g=b.parentElement&&b.parentElement.dataset.grp;if(g)setGroup(g,true,false);}
+  const g=groupOf(b);if(g&&document.querySelector(`.nav .grp[data-grp="${g}"]`).classList.contains("closed"))openOnly(g);}
 function content(){return document.getElementById("content");}
 function setTitle(t,s){document.getElementById("title").textContent=t;document.getElementById("sub").textContent=s||"";}
 function setBusy(b){busy=b;if(b)setConsole(true,false);document.querySelectorAll(".btn:not(.keep)").forEach(x=>x.disabled=b);

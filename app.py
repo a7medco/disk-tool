@@ -17,7 +17,7 @@ sys.path.insert(0, HERE)
 
 from core import capture, deploy, guard, health, watch, paths, settings, startup, sysinfo, system, ventoy, winops, yumi   # noqa: E402
 
-VERSION = "2.9.1"
+VERSION = "2.9.2"
 
 
 class Api:
@@ -112,11 +112,9 @@ class Api:
                 "ui": settings.get("ui", {})}
 
     def set_ui(self, ui):
-        """Sidebar groups open + console open/closed (only these two keys are stored)."""
+        """Only the Output console open/closed is stored (sidebar groups are not remembered)."""
         if isinstance(ui, dict):
-            op = ui.get("open")
-            settings.put("ui", {"open": [str(g)[:40] for g in op][:20] if isinstance(op, list) else None,
-                                "console": bool(ui.get("console", True))})
+            settings.put("ui", {"console": bool(ui.get("console", True))})
         return True
 
     def set_theme(self, theme):
