@@ -9,9 +9,10 @@ from core import deploy, guard, pe, pe_disks, winops   # noqa: E402
 LOG = []
 
 
-def log(line):
+def log(*a):
+    line = " ".join(str(x) for x in a)
     print(line)
-    LOG.append(str(line))
+    LOG.append(line)
 
 
 def main():
@@ -50,5 +51,5 @@ if __name__ == "__main__":
     except BaseException as e:
         import traceback
         tail = LOG[-40:] + traceback.format_exc().splitlines()[-6:]
-        log("::error title=WinPE install test::" + "%0A".join(x.replace("%", "%25") for x in tail))
+        print("::error title=WinPE install test::" + "%0A".join(x.replace("%", "%25") for x in tail))
         sys.exit(1)
