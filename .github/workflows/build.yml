@@ -69,13 +69,16 @@ jobs:
           DISKTOOL_FORCE_PE: "1"
         run: |
           $ErrorActionPreference = 'Stop'
-          New-Item -ItemType Directory -Force img\Windows\System32\config | Out-Null
-          Copy-Item C:\Windows\Boot img\Windows\Boot -Recurse
-          Copy-Item C:\Windows\System32\config\BCD-Template img\Windows\System32\config\
-          & bin\wimlib\wimlib-imagex.exe capture img test.wim "Test Windows"
-          if ($LASTEXITCODE -ne 0) { throw "wim capture failed" }
-          "create vdisk file=`"$pwd\t.vhdx`" maximum=4096 type=expandable`nattach vdisk`nexit" | Out-File -Encoding ascii dp.txt
-          diskpart /s dp.txt
+          try {
+            New-Item -ItemType Directory -Force img\Windows\System32\config | Out-Null
+            Copy-Item C:\Windows\Boot img\Windows\Boot -Recurse -ErrorAction SilentlyContinue
+            Copy-Item C:\Windows\System32\config\BCD-Template img\Windows\System32\config\
+            $o = & bin\wimlib\wimlib-imagex.exe capture img test.wim "Test Windows" 2>&1
+            if ($LASTEXITCODE -ne 0) { throw "wim capture failed: $o" }
+            "create vdisk file=`"$pwd\t.vhdx`" maximum=4096 type=expandable`nattach vdisk`nexit" | Out-File -Encoding ascii dp.txt
+            $o = diskpart /s dp.txt
+            if ($LASTEXITCODE -ne 0) { throw "diskpart vdisk failed: $o" }
+          } catch { Write-Host "::error title=WinPE install prep::$_"; exit 1 }
           python tests/ci_pe_install.py test.wim
           if ($LASTEXITCODE -ne 0) { throw "WinPE install test failed" }
           "select vdisk file=`"$pwd\t.vhdx`"`ndetach vdisk`nexit" | Out-File -Encoding ascii dp2.txt
