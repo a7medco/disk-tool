@@ -73,6 +73,9 @@ jobs:
             New-Item -ItemType Directory -Force img\Windows\System32\config | Out-Null
             Copy-Item C:\Windows\Boot img\Windows\Boot -Recurse -ErrorAction SilentlyContinue
             Copy-Item C:\Windows\System32\config\BCD-Template img\Windows\System32\config\
+            New-Item -ItemType Directory -Force img\Windows\System32\en-US | Out-Null
+            Copy-Item C:\Windows\System32\bootstr.dll img\Windows\System32\
+            Copy-Item C:\Windows\System32\en-US\bootstr.dll.mui img\Windows\System32\en-US\
             $o = & bin\wimlib\wimlib-imagex.exe capture img test.wim "Test Windows" 2>&1
             if ($LASTEXITCODE -ne 0) { throw "wim capture failed: $o" }
             "create vdisk file=`"$pwd\t.vhdx`" maximum=4096 type=expandable`nattach vdisk`nexit" | Out-File -Encoding ascii dp.txt
