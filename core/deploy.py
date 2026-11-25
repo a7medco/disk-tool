@@ -239,6 +239,24 @@ def apply_image(img, index, target, compact, log):
     return 127
 
 
+def _clean_gpt(disk_number, log):
+    """clean + convert gpt, then delete what diskpart added by itself (newer Windows auto-creates
+    an MSR on convert gpt), so the layout below is exactly Microsoft's ESP, MSR, Windows, Recovery."""
+    if diskpart_stream("select disk %s\nclean\nconvert gpt\nexit\n" % disk_number, log) != 0:
+        return False
+    from . import pe_disks
+    try:
+        parts = next(d for d in pe_disks.list_disks() if d["Number"] == disk_number)["Partitions"]
+    except StopIteration:
+        parts = 0
+    if parts:
+        log("Removing %d partition(s) diskpart created by itself..." % parts)
+        cmds = "".join("select partition %d\ndelete partition override\n" % k for k in range(parts, 0, -1))
+        if diskpart_stream("select disk %s\n%sexit\n" % (disk_number, cmds), log) != 0:
+            return False
+    return True
+
+
 # ------------------------------------------- Install Windows to a disk ----
 # WinNTSetup-style: prepare an (external) SSD/HDD that will go inside a PC.
 # Layouts follow Microsoft's "UEFI/GPT-based hard drive partitions" and
@@ -271,7 +289,9 @@ def install_to_disk(src, index, disk_number, scheme, drivers, compact, log, stop
     else:
         fw = "UEFI"
         log("1/6  Partitioning Disk %s - GPT / UEFI%s" % (disk_number, " + Recovery" if recovery else ""))
-        script = ("select disk %s\nclean\nconvert gpt\n"
+        if not _clean_gpt(disk_number, log):
+            return 1
+        script = ("select disk %s\n"
                   "create partition efi size=260\nformat quick fs=fat32 label=System\n"
                   "assign letter=%s\n"
                   "create partition msr size=16\n"

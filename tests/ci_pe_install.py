@@ -45,7 +45,8 @@ def main():
     for p in lay["Parts"]:
         log("PART", p["Number"], p["Type"], p["Size"] >> 20, "MB", p["Name"])
     msr = [p for p in lay["Parts"] if p["Type"] == pe_disks.GPT_MSR]
-    assert after["PartitionStyle"] == "GPT" and len(msr) == 1, "expected exactly one MSR"
+    assert after["PartitionStyle"] == "GPT" and len(msr) == 1 and len(lay["Parts"]) == 4, "expected ESP, MSR, Windows, Recovery"
+    assert lay["Parts"][0]["Type"] == pe_disks.GPT_ESP, "ESP must be first"
     assert after["HasWindows"], "the new Windows disk must now be protected"
     r = guard.arm("disk", n, str(n))
     log("ARM AFTER", r)
