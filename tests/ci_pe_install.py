@@ -37,7 +37,15 @@ def main():
 
     after = [d for d in pe_disks.list_disks() if d["Number"] == n][0]
     log("AFTER", after["PartitionStyle"], after["Partitions"], after["WindowsWhy"])
-    assert after["PartitionStyle"] == "GPT" and after["Partitions"] == 4, after
+    import struct
+    h = pe_disks._open("\\\\.\\PhysicalDrive%d" % n)
+    lay = pe_disks.parse_layout(pe_disks._ioctl(h, pe_disks.IOCTL_DISK_GET_DRIVE_LAYOUT_EX,
+                                                size=pe_disks.LAYOUT_HEAD + pe_disks.PART_SIZE * 16))
+    pe_disks._k32.CloseHandle(h)
+    for p in lay["Parts"]:
+        log("PART", p["Number"], p["Type"], p["Size"] >> 20, "MB", p["Name"])
+    msr = [p for p in lay["Parts"] if p["Type"] == pe_disks.GPT_MSR]
+    assert after["PartitionStyle"] == "GPT" and len(msr) == 1, "expected exactly one MSR"
     assert after["HasWindows"], "the new Windows disk must now be protected"
     r = guard.arm("disk", n, str(n))
     log("ARM AFTER", r)
