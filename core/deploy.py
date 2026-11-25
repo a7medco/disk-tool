@@ -9,8 +9,12 @@ Commands follow Microsoft's docs:
 import os
 import string
 
-from .system import ps_json
+from .system import capture as _run_capture, ps_json
+from . import pe
+from .paths import DATA
 from .winops import _ps_lines, diskpart_stream, run_stream
+
+WIMLIB = os.path.join(DATA, "bin", "wimlib", "wimlib-imagex.exe")
 
 
 # ---------------------------------------------------------------- OOBE ----
@@ -53,16 +57,32 @@ def sysprep_oobe(generalize, after, log):
 
 
 # --------------------------------------------------------- Windows To Go ----
+def _used_letters():
+    used = {L for L in string.ascii_uppercase if os.path.exists(L + ":\\")}
+    try:                                            # also empty card readers / DVD drives
+        import ctypes
+        mask = ctypes.windll.kernel32.GetLogicalDrives()
+        used |= {chr(65 + i) for i in range(26) if mask & (1 << i)}
+    except (AttributeError, OSError):
+        pass
+    return used
+
+
 def _free_letters(n):
-    used = {str(r.get("DriveLetter") or "").upper()
-            for r in ps_json("Get-Volume | Select-Object DriveLetter")}
-    used |= {L for L in string.ascii_uppercase if os.path.exists(L + ":\\")}
+    used = _used_letters()
+    if not pe.is_pe():
+        used |= {str(r.get("DriveLetter") or "").upper()
+                 for r in ps_json("Get-Volume | Select-Object DriveLetter")}
     free = [L for L in "SWTUVRQPONM" if L not in used]
     return free[:n] if len(free) >= n else None
 
 
 def _image_from_source(src, log):
     """Return (image_path, iso_to_unmount). src can be .iso / .wim / .esd."""
+    if src.lower().endswith(".iso") and pe.is_pe():
+        log("[X] An ISO can't be opened in WinPE (mounting needs PowerShell). "
+            "Open the ISO's sources folder and pick install.wim or install.esd.")
+        return "", None
     if src.lower().endswith(".iso"):
         lines = _ps_lines("$r=Mount-DiskImage -ImagePath '%s' -PassThru;"
                           "($r | Get-Volume).DriveLetter" % src.replace("'", "''"))
@@ -88,6 +108,8 @@ def list_editions(src):
     img, iso = _image_from_source(src, _L())
     if not img:
         return []
+    if pe.is_pe():
+        return editions_no_ps(img)
     try:
         return ps_json("Get-WindowsImage -ImagePath '%s' | Select-Object "
                        "@{n='Index';e={$_.ImageIndex}},@{n='Name';e={$_.ImageName}},"
@@ -167,6 +189,56 @@ def windows_to_go(src, index, disk_number, log, stop=None):
     return 0
 
 
+def parse_image_info(text):
+    """'dism /Get-ImageInfo' or 'wimlib-imagex info' text -> [{Index, Name, Size}]."""
+    out, cur = [], None
+    for line in text.splitlines():
+        if ":" not in line:
+            continue
+        k, v = line.split(":", 1)
+        k, v = k.strip().lower(), v.strip()
+        if k == "index" and v.isdigit():
+            cur = {"Index": int(v), "Name": "", "Size": 0}
+            out.append(cur)
+        elif cur is not None and k == "name" and not cur["Name"]:
+            cur["Name"] = v
+        elif cur is not None and k in ("size", "total bytes"):
+            digits = "".join(c for c in v.split(" bytes")[0] if c.isdigit())
+            cur["Size"] = int(digits) if digits else 0
+    return out
+
+
+def editions_no_ps(img):
+    """Editions without PowerShell: DISM (English output), else wimlib."""
+    if pe.tool("dism"):
+        code, out = _run_capture(["dism", "/English", "/Get-ImageInfo", "/ImageFile:" + img])
+        rows = parse_image_info(out) if code == 0 else []
+        if rows:
+            return rows
+    if os.path.isfile(WIMLIB):
+        code, out = _run_capture([WIMLIB, "info", img])
+        if code == 0:
+            return parse_image_info(out)
+    return []
+
+
+def apply_image(img, index, target, compact, log):
+    """dism /Apply-Image, or wimlib when this WinPE has no DISM. Returns exit code."""
+    if pe.tool("dism"):
+        args = ["dism", "/Apply-Image", "/ImageFile:" + img, "/Index:%s" % index, "/ApplyDir:%s:\\" % target]
+        if compact:
+            args.append("/Compact")
+        return run_stream(args, log)
+    if os.path.isfile(WIMLIB):
+        log("[!] DISM is not in this WinPE - applying with wimlib.")
+        args = [WIMLIB, "apply", img, str(index), "%s:\\" % target]
+        if compact:
+            args.append("--compact=xpress4k")
+        return run_stream(args, log)
+    log("[X] Neither DISM nor bin\\wimlib is available - can't apply the image.")
+    return 127
+
+
 # ------------------------------------------- Install Windows to a disk ----
 # WinNTSetup-style: prepare an (external) SSD/HDD that will go inside a PC.
 # Layouts follow Microsoft's "UEFI/GPT-based hard drive partitions" and
@@ -219,11 +291,7 @@ def install_to_disk(src, index, disk_number, scheme, drivers, compact, log, stop
         return 1
     try:
         log("2/6  Applying Windows (edition %s)%s..." % (index, " as Compact OS" if compact else ""))
-        args = ["dism", "/Apply-Image", "/ImageFile:" + img, "/Index:%s" % index,
-                "/ApplyDir:%s:\\" % W]
-        if compact:
-            args.append("/Compact")
-        if run_stream(args, log) != 0:
+        if apply_image(img, index, W, compact, log) != 0:
             log("[X] DISM could not apply the image.")
             return 1
     finally:
@@ -231,7 +299,9 @@ def install_to_disk(src, index, disk_number, scheme, drivers, compact, log, stop
             _ps_lines("Dismount-DiskImage -ImagePath '%s'" % iso.replace("'", "''"))
 
     if drivers:
-        if os.path.isdir(drivers):
+        if os.path.isdir(drivers) and not pe.tool("dism"):
+            log("[!] DISM is not in this WinPE - drivers skipped.")
+        elif os.path.isdir(drivers):
             log("3/6  Adding drivers from %s ..." % drivers)
             run_stream(["dism", "/Image:%s:\\" % W, "/Add-Driver",
                         "/Driver:" + drivers, "/Recurse"], log)

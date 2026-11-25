@@ -17,7 +17,7 @@ sys.path.insert(0, HERE)
 
 from core import capture, deploy, guard, health, watch, paths, settings, startup, sysinfo, system, ventoy, winops, yumi   # noqa: E402
 
-VERSION = "2.9.2"
+VERSION = "2.10.0"
 
 
 class Api:
@@ -300,6 +300,11 @@ def _pw(p):
 def main():
     if sys.platform != "win32":
         print("This app is for Windows.")
+        return
+    from core import pe
+    if pe.is_pe():                       # WinPE: no UAC, no PowerShell, no WebView2 -> simple window
+        import gui
+        gui.main()
         return
     if not system.is_admin() and system.relaunch_as_admin():
         return

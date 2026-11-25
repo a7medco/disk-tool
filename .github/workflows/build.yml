@@ -2,7 +2,7 @@ name: Build DiskTool.exe
 
 on:
   push:
-    branches: [main]
+    branches: [main, "phase-*/**"]
   workflow_dispatch:
 
 permissions:
@@ -38,6 +38,48 @@ jobs:
 
       - name: Safety tests (backend guard for destructive operations)
         run: python -I tests/test_guard.py .
+
+      - name: WinPE tests (disk layout parser, edition parser, WinPE guard rules)
+        run: python -I tests/test_pe.py .
+
+      - name: WinPE disk reader (no PowerShell) must match the PowerShell disk list
+        run: >
+          python -c "from core import winops,pe_disks;
+          a=sorted(winops.list_disks(0),key=lambda x:x['Number']);b=pe_disks.list_disks();
+          L=lambda x:sorted(str(v.get('Letter') or '').strip(chr(0)) for v in (x.get('Volumes') or []) if str(v.get('Letter') or '').strip(chr(0)));
+          print('PS',[(x['Number'],x['Size'],x['FriendlyName'],L(x)) for x in a]);
+          [print('PE',x['Number'],x['Size'],x['PartitionStyle'],repr(x['DiskId']),x['BusType'],x['FriendlyName'],'win=',x['HasWindows'],x['WindowsWhy'],L(x)) for x in b];
+          assert [(x['Number'],x['Size']) for x in a]==[(x['Number'],x['Size']) for x in b], 'numbers/sizes differ';
+          assert [L(x) for x in a]==[L(x) for x in b], 'drive letters differ'"
+
+      - name: Safety test in WinPE mode - Windows disk and tool disk must be refused
+        env:
+          DISKTOOL_FORCE_PE: "1"
+        run: >
+          python -c "import os;from core import winops,guard,pe;assert pe.is_pe();
+          d=winops.list_disks(0);w=[x for x in d if any(str(v.get('Letter'))=='C' for v in x['Volumes'])];
+          assert w and w[0]['HasWindows'], 'Windows disk not detected';r=guard.arm('disk',w[0]['Number'],str(w[0]['Number']));print('ARM C disk:',r);assert not r['ok'];
+          a=os.getcwd()[0].upper();t=[x for x in d if any(str(v.get('Letter'))==a for v in x['Volumes'])];
+          r=guard.arm('disk',t[0]['Number'],str(t[0]['Number']));print('ARM tool disk:',r);assert not r['ok'];
+          assert not guard.arm('volume','C','C')['ok'] and not guard.arm('volume',a,a)['ok']"
+
+      - name: WinPE install test - apply an image to a virtual disk (guard + diskpart + DISM + bcdboot)
+        shell: pwsh
+        env:
+          DISKTOOL_FORCE_PE: "1"
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force img\Windows\System32\config | Out-Null
+          Copy-Item C:\Windows\Boot img\Windows\Boot -Recurse
+          Copy-Item C:\Windows\System32\config\BCD-Template img\Windows\System32\config\
+          & bin\wimlib\wimlib-imagex.exe capture img test.wim "Test Windows"
+          if ($LASTEXITCODE -ne 0) { throw "wim capture failed" }
+          "create vdisk file=`"$pwd\t.vhdx`" maximum=4096 type=expandable`nattach vdisk`nexit" | Out-File -Encoding ascii dp.txt
+          diskpart /s dp.txt
+          python tests/ci_pe_install.py test.wim
+          if ($LASTEXITCODE -ne 0) { throw "WinPE install test failed" }
+          "select vdisk file=`"$pwd\t.vhdx`"`ndetach vdisk`nexit" | Out-File -Encoding ascii dp2.txt
+          diskpart /s dp2.txt
 
       - name: Safety test on real Windows - the Windows disk must be refused
         run: >
@@ -107,7 +149,18 @@ jobs:
           name: DiskTool
           path: release/DiskTool
 
+      - name: Publish a test build for this branch (pre-release "winpe-test")
+        if: github.ref != 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete winpe-test --yes --cleanup-tag
+          if ($LASTEXITCODE -ne 0) { Write-Host "No old test release." }
+          gh release create winpe-test DiskTool.zip DiskTool-SingleExe.zip --prerelease --target $env:GITHUB_SHA --title "Disk Tool - WinPE test build ($env:GITHUB_REF_NAME)" --notes "Test build from branch $env:GITHUB_REF_NAME - not the official release."
+
       - name: Publish as the "latest" release
+        if: github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}

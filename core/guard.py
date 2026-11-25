@@ -18,7 +18,7 @@ import re
 import threading
 import time
 
-from .paths import DATA
+from .paths import DATA, RES
 
 TTL = 90                       # seconds a confirmation stays valid
 _lock = threading.Lock()
@@ -41,9 +41,21 @@ def _sys_letter():
     return (os.environ.get("SystemDrive", "C:")[:1] or "C").upper()
 
 
-def _app_letter():
-    d = os.path.splitdrive(os.path.abspath(DATA))[0]
+def _drive_of(path):
+    d = os.path.splitdrive(os.path.abspath(str(path)))[0]
     return d[:1].upper() if d[1:2] == ":" else ""
+
+
+def _app_letters():
+    """Every drive the running tool comes from (exe, its folder, unpacked files, cwd)."""
+    import sys
+    paths = [DATA, RES, sys.executable, sys.argv[0] if sys.argv else "", __file__]
+    return {L for L in (_drive_of(p) for p in paths if p) if L}
+
+
+def _pe():
+    from .pe import is_pe
+    return is_pe()
 
 
 def _disks():
@@ -56,7 +68,9 @@ def _letters(d):
 
 
 def _fp(d):
-    return (d.get("Size"), str(d.get("FriendlyName") or ""), str(d.get("Serial") or ""))
+    # DiskId/Partitions come from the WinPE reader (empty "" for a new disk, so it never matches by id alone)
+    return (d.get("Size"), str(d.get("FriendlyName") or ""), str(d.get("Serial") or ""),
+            str(d.get("DiskId") or ""), d.get("Partitions"))
 
 
 def disk_number(n):
@@ -113,9 +127,16 @@ def check_disk(n, rows=None):
     L = _letters(d)
     if d.get("IsSystem") or d.get("IsBoot") or _sys_letter() in L:
         raise Blocked("Disk %s holds Windows (%s:) - never erased." % (d["Number"], _sys_letter()))
-    app = _app_letter()
-    if app and app in L:
-        raise Blocked("Disk %s holds Disk Tool itself (%s:) - run the tool from another drive." % (d["Number"], app))
+    app = _app_letters() & L
+    if app:
+        raise Blocked("Disk %s holds Disk Tool itself (%s:) - run the tool from another drive."
+                      % (d["Number"], ", ".join(sorted(app))))
+    if _pe():
+        if d.get("IsVentoy"):
+            raise Blocked("Disk %s is a Ventoy USB - never erased in WinPE." % d["Number"])
+        if d.get("HasWindows"):
+            raise Blocked("Disk %s has Windows on it (%s) - WinPE never erases a Windows disk."
+                          % (d["Number"], "; ".join(d.get("WindowsWhy") or [])))
     return d
 
 
@@ -123,12 +144,14 @@ def check_volume(x, rows=None):
     L = letter(x)
     if L == _sys_letter():
         raise Blocked("%s: is the Windows drive." % L)
-    if L == _app_letter():
+    if L in _app_letters():
         raise Blocked("%s: holds Disk Tool itself." % L)
     for d in (rows if rows is not None else _disks()):
         if L in _letters(d):
             if d.get("IsSystem") or d.get("IsBoot"):
                 raise Blocked("%s: is on the Windows/boot disk." % L)
+            if _pe():
+                check_disk(d["Number"], [d])     # same WinPE rules as a whole disk
             return L, d
     raise Blocked("%s: not found." % L)
 

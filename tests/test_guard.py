@@ -10,7 +10,7 @@ fake.list_disks = lambda max_age=0: DISKS
 sys.modules["core.winops"] = fake
 import os; os.environ["SystemDrive"] = "C:"
 from core import guard
-guard._app_letter = lambda: "F"          # tool runs from F: (disk 2)
+guard._app_letters = lambda: {"F"}          # tool runs from F: (disk 2)
 B = guard.Blocked
 def blocked(f):
     try: f(); return False

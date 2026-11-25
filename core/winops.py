@@ -116,7 +116,12 @@ def list_disks(max_age=600):
             return _disk_cache["rows"]
         _disk_cache["cached"] = False
         t0 = time.time()
-        rows = ps_json(DISKS_PS)
+        from . import pe
+        if pe.is_pe():                       # WinPE: no PowerShell/WMI -> Windows IOCTLs
+            from . import pe_disks
+            rows = pe_disks.list_disks()
+        else:
+            rows = ps_json(DISKS_PS)
         _disk_cache.update(t=time.time(), rows=rows, took=round(time.time() - t0, 1))
         return rows
 
@@ -147,6 +152,10 @@ def format_disk(number, fs, scheme, label, log):
 def chkdsk(drive_letter, level, log):
     """level: 'scan' (read-only), 'fix' (/f), 'full' (/r - bad sectors, slow)."""
     flag = {"scan": ["/scan"], "fix": ["/f"], "full": ["/r"]}[level]
+    from . import pe
+    if not pe.tool("chkdsk"):
+        log("[X] chkdsk.exe is not in this Windows/WinPE - it can't check drives here.")
+        return 127
     sysdrv = os.environ.get("SystemDrive", "C:")[:1].upper()
     if level != "scan" and drive_letter.upper() == sysdrv:
         # Windows drive is in use: answer Y to "schedule on next restart?"
@@ -157,7 +166,48 @@ def chkdsk(drive_letter, level, log):
 
 def robocopy(src, dst, log):
     # /Z resumable, /E all subfolders, /R:2 retry, /NP no per-file %, /TEE
+    from . import pe
+    if not pe.tool("robocopy"):
+        log("[!] robocopy.exe is not in this WinPE - using the built-in copier instead "
+            "(skips files that are already copied).")
+        return py_copy(src, dst, log)
     return run_stream(["robocopy", src, dst, "/Z", "/E", "/R:2", "/W:3", "/NP"], log)
+
+
+def py_copy(src, dst, log):
+    """Copy a folder tree without robocopy. Returns robocopy-style codes (0/1 ok, 8 = errors)."""
+    import shutil
+    if not os.path.isdir(src):
+        log("[X] Source folder not found: %s" % src)
+        return 16
+    copied = skipped = failed = 0
+    for root, _dirs, files in os.walk(src):
+        rel = os.path.relpath(root, src)
+        out = os.path.normpath(os.path.join(dst, rel))
+        try:
+            os.makedirs(out, exist_ok=True)
+        except OSError as e:
+            log("[X] %s: %s" % (out, e))
+            failed += 1
+            continue
+        for f in files:
+            a, b = os.path.join(root, f), os.path.join(out, f)
+            try:
+                sa = os.stat(a)
+                if os.path.isfile(b):
+                    sb = os.stat(b)
+                    if sb.st_size == sa.st_size and int(sb.st_mtime) >= int(sa.st_mtime):
+                        skipped += 1
+                        continue
+                shutil.copy2(a, b)
+                copied += 1
+                if copied % 200 == 0:
+                    log("  %d files copied..." % copied)
+            except OSError as e:
+                log("[X] %s: %s" % (a, e))
+                failed += 1
+    log("Copied %d, already there %d, failed %d." % (copied, skipped, failed))
+    return 8 if failed else (1 if copied else 0)
 
 
 # ========================= extra operations =============================
