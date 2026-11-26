@@ -11,7 +11,8 @@ Output: $OutIso (default .\WinPE_amd64.iso)
 param(
     [string]$WorkDir = "$env:RUNNER_TEMP\WinPE_amd64",
     [string]$OutIso = ".\WinPE_amd64.iso",
-    [string]$AdkRoot = "${env:ProgramFiles(x86)}\Windows Kits\10"
+    [string]$AdkRoot = "${env:ProgramFiles(x86)}\Windows Kits\10",
+    [switch]$SkipSafetyScanner
 )
 $ErrorActionPreference = "Stop"
 
@@ -76,6 +77,18 @@ try {
     $content = Get-Content $StartNet -Raw
     if ($content -notmatch "wpeinit") {
         Add-Content $StartNet "`r`nwpeinit`r`n"
+    }
+
+    # EXPERIMENT (Phase 3): Microsoft Safety Scanner (msert.exe) - official, free, but
+    # Microsoft documents it only for a running Windows install, not WinPE. Downloaded
+    # fresh on every build (it expires 10 days after download) so it's always current.
+    # Whether it actually runs here at all is what this experiment is testing.
+    if (-not $SkipSafetyScanner) {
+        Write-Host "    Downloading Microsoft Safety Scanner (64-bit, official link)"
+        $ToolsDir = Join-Path $Mount "Windows\System32\Tools"
+        New-Item -ItemType Directory -Force $ToolsDir | Out-Null
+        Invoke-WebRequest "https://go.microsoft.com/fwlink/?LinkId=212732" -OutFile (Join-Path $ToolsDir "msert.exe")
+        Write-Host ("    msert.exe: {0:N0} MB" -f ((Get-Item (Join-Path $ToolsDir "msert.exe")).Length / 1MB))
     }
 } finally {
     Write-Host "    Unmounting (commit)"

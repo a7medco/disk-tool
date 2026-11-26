@@ -300,6 +300,9 @@ jobs:
               $startnet = Get-Content (Join-Path $mnt 'Windows\System32\startnet.cmd') -Raw
               if ($startnet -notmatch 'wpeinit') { throw "startnet.cmd does not call wpeinit" }
               Write-Host "[OK] startnet.cmd runs wpeinit"
+              $msert = Join-Path $mnt 'Windows\System32\Tools\msert.exe'
+              if (-not (Test-Path $msert)) { throw "msert.exe (Safety Scanner) not found on the ISO" }
+              Write-Host ("[OK] msert.exe present ({0:N0} MB)" -f ((Get-Item $msert).Length / 1MB))
             } finally {
               Dism /Unmount-Image /MountDir:$mnt /discard
             }
