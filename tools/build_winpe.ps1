@@ -83,13 +83,17 @@ try {
 }
 
 Write-Host "4/4  Building the ISO"
-# MakeWinPEMedia.cmd lives directly under the WinPE add-on root
+# MakeWinPEMedia.cmd lives directly under the WinPE add-on root. DandISetEnv.bat (and/or
+# MakeWinPEMedia.cmd itself) can change the current directory, so resolve the output path
+# to an absolute one first - a relative $OutIso would otherwise land somewhere else.
 $MakeWinPEMedia = Join-Path $AdkRoot "Assessment and Deployment Kit\Windows Preinstallation Environment\MakeWinPEMedia.cmd"
 if (-not (Test-Path $MakeWinPEMedia)) { throw "MakeWinPEMedia.cmd not found" }
-& cmd /c """$DandISetEnv"" && ""$MakeWinPEMedia"" /ISO ""$WorkDir"" ""$OutIso"""
+$OutIsoAbs = if ([System.IO.Path]::IsPathRooted($OutIso)) { $OutIso } else { Join-Path (Get-Location) $OutIso }
+& cmd /c """$DandISetEnv"" && ""$MakeWinPEMedia"" /ISO ""$WorkDir"" ""$OutIsoAbs"""
 if ($LASTEXITCODE -ne 0) { throw "MakeWinPEMedia failed ($LASTEXITCODE)" }
 
-if (-not (Test-Path $OutIso)) { throw "ISO was not created: $OutIso" }
+if (-not (Test-Path $OutIsoAbs)) { throw "ISO was not created: $OutIsoAbs" }
+$OutIso = $OutIsoAbs
 $size = (Get-Item $OutIso).Length
 Write-Host ("[OK] {0} ({1:N0} MB)" -f $OutIso, ($size / 1MB))
 if ($size -lt 200MB) { throw "ISO looks too small ($([math]::Round($size/1MB)) MB) - something is missing" }
