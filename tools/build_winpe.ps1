@@ -86,7 +86,7 @@ Write-Host "4/4  Building the ISO"
 # MakeWinPEMedia.cmd lives directly under the WinPE add-on root
 $MakeWinPEMedia = Join-Path $AdkRoot "Assessment and Deployment Kit\Windows Preinstallation Environment\MakeWinPEMedia.cmd"
 if (-not (Test-Path $MakeWinPEMedia)) { throw "MakeWinPEMedia.cmd not found" }
-& cmd /c """$MakeWinPEMedia"" /ISO ""$WorkDir"" ""$OutIso"""
+& cmd /c """$DandISetEnv"" && ""$MakeWinPEMedia"" /ISO ""$WorkDir"" ""$OutIso"""
 if ($LASTEXITCODE -ne 0) { throw "MakeWinPEMedia failed ($LASTEXITCODE)" }
 
 if (-not (Test-Path $OutIso)) { throw "ISO was not created: $OutIso" }
