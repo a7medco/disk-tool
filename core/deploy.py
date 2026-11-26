@@ -8,6 +8,7 @@ Commands follow Microsoft's docs:
 """
 import os
 import string
+import time
 
 from .system import capture as _run_capture, ps_json
 from . import pe
@@ -15,6 +16,19 @@ from .paths import DATA
 from .winops import _ps_lines, diskpart_stream, run_stream
 
 WIMLIB = os.path.join(DATA, "bin", "wimlib", "wimlib-imagex.exe")
+
+
+def _remove_letter(letter, log, tries=3):
+    """select volume <letter>; remove letter. A hidden partition can briefly
+    be held open right after formatting (AV/indexing) - retry a couple of times."""
+    script = "select volume %s\nremove letter=%s\nexit\n" % (letter, letter)
+    for attempt in range(tries):
+        if diskpart_stream(script, log) == 0:
+            return 0
+        if attempt < tries - 1:
+            log("Drive %s: still in use - retrying..." % letter)
+            time.sleep(2)
+    return 1
 
 
 # ---------------------------------------------------------------- OOBE ----
@@ -183,7 +197,7 @@ def windows_to_go(src, index, disk_number, log, stop=None):
     if run_stream([bcd, W + ":\\Windows", "/s", S + ":", "/f", "ALL"], log) != 0:
         log("[X] bcdboot failed.")
         return 1
-    diskpart_stream("select volume %s\nremove letter=%s\nexit\n" % (S, S), log)
+    _remove_letter(S, log)
     log("[OK] Windows To Go is ready. Boot any PC from this USB "
         "(first start takes a few minutes while Windows sets up the hardware).")
     return 0
@@ -285,7 +299,7 @@ def install_to_disk(src, index, disk_number, scheme, drivers, compact, log, stop
         script += "format quick fs=ntfs label=Windows\nassign letter=%s\n" % W
         if recovery:
             script += ("create partition primary\nformat quick fs=ntfs label=Recovery\n"
-                       "assign letter=%s\nset id=27\n" % R)
+                       "set id=27\nassign letter=%s\n" % R)
     else:
         fw = "UEFI"
         log("1/6  Partitioning Disk %s - GPT / UEFI%s" % (disk_number, " + Recovery" if recovery else ""))
@@ -301,8 +315,9 @@ def install_to_disk(src, index, disk_number, scheme, drivers, compact, log, stop
         script += "format quick fs=ntfs label=Windows\nassign letter=%s\n" % W
         if recovery:
             script += ("create partition primary\nformat quick fs=ntfs label=Recovery\n"
-                       "assign letter=%s\nset id=de94bba4-06d1-4d40-a16a-bfd50179d6ac\n"
-                       "gpt attributes=0x8000000000000001\n" % R)
+                       "set id=de94bba4-06d1-4d40-a16a-bfd50179d6ac\n"
+                       "gpt attributes=0x8000000000000001\n"
+                       "assign letter=%s\n" % R)
     if diskpart_stream(script + "exit\n", log) != 0:
         return 1
 
@@ -347,9 +362,9 @@ def install_to_disk(src, index, disk_number, scheme, drivers, compact, log, stop
         log("5/6  Recovery partition not requested - skipped.")
 
     log("6/6  Hiding the helper partitions...")
-    diskpart_stream("select volume %s\nremove letter=%s\nexit\n" % (S, S), log)
+    _remove_letter(S, log)
     if recovery:
-        diskpart_stream("select volume %s\nremove letter=%s\nexit\n" % (R, R), log)
+        _remove_letter(R, log)
     log("[OK] Done. Put this disk inside the PC and boot it in %s mode - Windows finishes "
         "setting up and shows the welcome screen." % ("UEFI" if fw == "UEFI" else "Legacy/CSM"))
     return 0

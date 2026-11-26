@@ -84,3 +84,11 @@ python gui.py
 - على WinPE البرنامج **مش بيمسح أبداً** أي هارد عليه ويندوز (فولدر Windows أو EFI أو Recovery)، ولا فلاشة Ventoy، ولا الهارد اللي البرنامج شغال منه.
 - استخدم `DiskTool.zip` (نسخة الفولدر). نسخة الـ exe الواحد بتفك نفسها على `X:` وده مساحته صغيرة.
 - لو `robocopy` مش موجود، النسخ بيتم بالناسخ الداخلي. ولو `dism` مش موجود، التسطيب بيتم بـ `bin\wimlib`.
+
+## WinPE بتاعنا (من v2.10.0 - المرحلة 2)
+
+كل build على GitHub Actions بيطلع كمان `WinPE_amd64.iso` جنب إصدار DiskTool، مبني بأدوات مايكروسوفت الرسمية (Windows ADK + WinPE add-on، `copype` + DISM). فيه PowerShell والـ Storage والشبكة (الشبكة السلكية بتشتغل لوحدها - `wpeinit` بيتنادي تلقائي من `startnet.cmd`).
+
+- أحدث نسخة: https://github.com/a7medco/disk-tool/releases/download/latest/WinPE_amd64.iso
+- حطها في Ventoy وبوت منها زي أي ISO.
+- لسه من غير DiskTool جواها (ده في المرحلة 3). دلوقتي هي WinPE بتاعتنا بس، بديل لـ Windows Setup's WinPE اللي استخدمناه في المرحلة 1.

@@ -174,3 +174,101 @@ jobs:
           gh release delete latest --yes --cleanup-tag
           if ($LASTEXITCODE -ne 0) { Write-Host "No old release - first build." }
           gh release create latest DiskTool.zip DiskTool-SingleExe.zip --title "Disk Tool (latest build)" --notes "Two versions - pick one, extract it, double-click DiskTool.exe inside the DiskTool folder:`n`n- DiskTool.zip - fast folder version (opens fastest, recommended)`n- DiskTool-SingleExe.zip - one DiskTool.exe + bin folder (unpacks itself every start, a little slower)"
+
+  build-winpe:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Cache the ADK + WinPE add-on installers
+        uses: actions/cache@v4
+        id: adk-cache
+        with:
+          path: C:\adk_installers
+          key: adk-installers-v1-2289980-2289981
+
+      - name: Download the ADK + WinPE add-on (official Microsoft links)
+        if: steps.adk-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force C:\adk_installers | Out-Null
+          Invoke-WebRequest "https://go.microsoft.com/fwlink/?linkid=2289980" -OutFile C:\adk_installers\adksetup.exe
+          Invoke-WebRequest "https://go.microsoft.com/fwlink/?linkid=2289981" -OutFile C:\adk_installers\adkwinpesetup.exe
+
+      - name: Install ADK (Deployment Tools) + WinPE add-on - silent
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # 0 = ok, 3010 = reboot needed (fine here), 1001 = this feature is already installed
+          function Install-Adk($exe, $features, $label) {
+            $log = "$env:RUNNER_TEMP\$label.log"
+            $p = Start-Process $exe -ArgumentList "/quiet","/installpath","C:\ADK","/features",$features,"/log",$log -Wait -PassThru
+            Write-Host "$label installer exit code: $($p.ExitCode)"
+            if ($p.ExitCode -notin 0, 3010, 1001) {
+              if (Test-Path $log) { Write-Host "---- $log ----"; Get-Content $log | Select-String -Pattern "error|fail" -CaseSensitive:$false | Select-Object -Last 40 }
+              throw "$label install failed (exit $($p.ExitCode))"
+            }
+          }
+          Write-Host "---- Deployment Tools / WinPE already registered? ----"
+          Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots' -ErrorAction SilentlyContinue |
+            Format-List * | Out-String | Write-Host
+          Install-Adk C:\adk_installers\adksetup.exe 'OptionId.DeploymentTools' 'ADK'
+          Install-Adk C:\adk_installers\adkwinpesetup.exe 'OptionId.WindowsPreinstallationEnvironment' 'WinPE-addon'
+          $found = Get-ChildItem 'C:\' -Filter copype.cmd -Recurse -ErrorAction SilentlyContinue -Depth 6
+          if (-not $found) {
+            Write-Host "::error::copype.cmd not found anywhere under C:\"
+            throw "WinPE add-on did not install where expected"
+          }
+          $found | ForEach-Object { Write-Host "Found: $($_.FullName)" }
+          # copype.cmd is at <AdkRoot>\Assessment and Deployment Kit\Windows Preinstallation Environment\copype.cmd
+          $adkRoot = $found[0].FullName -replace '\\Assessment and Deployment Kit\\.*$', ''
+          Write-Host "ADK root: $adkRoot"
+          "ADK_ROOT=$adkRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build the custom WinPE ISO (PowerShell, storage, networking)
+        shell: pwsh
+        run: .\tools\build_winpe.ps1 -AdkRoot "$env:ADK_ROOT" -OutIso '.\WinPE_amd64.iso'
+
+      - name: Smoke test - mount the ISO and check the optional components landed
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $img = Mount-DiskImage -ImagePath (Resolve-Path .\WinPE_amd64.iso) -PassThru
+          $drive = ($img | Get-Volume).DriveLetter
+          try {
+            $boot = "$($drive):\sources\boot.wim"
+            if (-not (Test-Path $boot)) { throw "boot.wim not found on the ISO" }
+            $mnt = "C:\wpe_check"
+            New-Item -ItemType Directory -Force $mnt | Out-Null
+            Dism /Mount-Image /ImageFile:$boot /index:1 /MountDir:$mnt /ReadOnly
+            try {
+              foreach ($exe in @('Windows\System32\WindowsPowerShell\v1.0\powershell.exe',
+                                  'Windows\System32\wbem\wmic.exe',
+                                  'Windows\System32\diskpart.exe')) {
+                $p = Join-Path $mnt $exe
+                if (-not (Test-Path $p)) { throw "Missing from the WinPE image: $exe" }
+                Write-Host "[OK] $exe"
+              }
+              $startnet = Get-Content (Join-Path $mnt 'Windows\System32\startnet.cmd') -Raw
+              if ($startnet -notmatch 'wpeinit') { throw "startnet.cmd does not call wpeinit" }
+              Write-Host "[OK] startnet.cmd runs wpeinit"
+            } finally {
+              Dism /Unmount-Image /MountDir:$mnt /discard
+            }
+          } finally {
+            Dismount-DiskImage -ImagePath (Resolve-Path .\WinPE_amd64.iso) | Out-Null
+          }
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: WinPE_amd64
+          path: WinPE_amd64.iso
+
+      - name: Publish the WinPE ISO on the same release as the DiskTool build
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = if ($env:GITHUB_REF -eq 'refs/heads/main') { 'latest' } else { 'winpe-test' }
+          gh release upload $tag .\WinPE_amd64.iso --clobber

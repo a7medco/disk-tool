@@ -1,0 +1,90 @@
+<#
+Builds a custom WinPE amd64 ISO using the official Windows ADK + WinPE add-on
+(Microsoft "Create a bootable Windows PE drive" / "copype" docs). Adds the
+optional components needed for PowerShell, basic storage, and networking.
+
+Must run on Windows with the ADK + WinPE add-on already installed (silent,
+Deployment Tools + WinPE features only). Run from an elevated PowerShell.
+
+Output: $OutIso (default .\WinPE_amd64.iso)
+#>
+param(
+    [string]$WorkDir = "$env:RUNNER_TEMP\WinPE_amd64",
+    [string]$OutIso = ".\WinPE_amd64.iso",
+    [string]$AdkRoot = "${env:ProgramFiles(x86)}\Windows Kits\10"
+)
+$ErrorActionPreference = "Stop"
+
+$DandI = Join-Path $AdkRoot "Assessment and Deployment Kit\Deployment Tools"
+$OCs = Join-Path $AdkRoot "Assessment and Deployment Kit\Windows Preinstallation Environment\amd64\WinPE_OCs"
+$OCsEn = Join-Path $OCs "en-us"
+$CopyPe = Join-Path $DandI "amd64\DandISetEnv.bat"
+if (-not (Test-Path $CopyPe)) { throw "ADK Deployment Tools not found under: $DandI" }
+
+if (Test-Path $WorkDir) { Remove-Item $WorkDir -Recurse -Force }
+
+# copype lives in the ADK's WinPE add-on folder, not in Deployment Tools
+$CopypeCmd = Join-Path $AdkRoot "Assessment and Deployment Kit\Windows Preinstallation Environment\copype.cmd"
+if (-not (Test-Path $CopypeCmd)) { throw "copype.cmd not found - is the WinPE add-on installed?" }
+
+Write-Host "1/4  copype amd64 $WorkDir"
+& cmd /c """$CopypeCmd"" amd64 ""$WorkDir"""
+if ($LASTEXITCODE -ne 0) { throw "copype failed ($LASTEXITCODE)" }
+
+$Mount = Join-Path $WorkDir "mount"
+$Boot = Join-Path $WorkDir "media\sources\boot.wim"
+
+Write-Host "2/4  Mounting boot.wim and adding optional components"
+Dism /Mount-Image /ImageFile:"$Boot" /index:1 /MountDir:"$Mount"
+if ($LASTEXITCODE -ne 0) { throw "Mount-Image failed" }
+
+# Order matters (Microsoft "WinPE: Add packages"):
+#   WinPE-WMI -> WinPE-NetFX -> WinPE-Scripting -> WinPE-PowerShell -> WinPE-StorageWMI
+# Each *-neutral cab needs its en-us language cab added right after it.
+$Components = @(
+    "WinPE-WMI",
+    "WinPE-NetFX",
+    "WinPE-Scripting",
+    "WinPE-PowerShell",
+    "WinPE-StorageWMI",
+    "WinPE-DismCmdlets",
+    "WinPE-SecureBootCmdlets",
+    "WinPE-SecureStartup",
+    "WinPE-EnhancedStorage"
+)
+try {
+    foreach ($c in $Components) {
+        $cab = Join-Path $OCs "$c.cab"
+        if (-not (Test-Path $cab)) { throw "Missing optional component: $cab" }
+        Write-Host "    + $c"
+        Dism /Image:"$Mount" /Add-Package /PackagePath:"$cab"
+        if ($LASTEXITCODE -ne 0) { throw "Add-Package failed for $c" }
+        $cabEn = Join-Path $OCsEn "$c`_en-us.cab"
+        if (Test-Path $cabEn) {
+            Dism /Image:"$Mount" /Add-Package /PackagePath:"$cabEn"
+            if ($LASTEXITCODE -ne 0) { throw "Add-Package failed for $c en-us" }
+        }
+    }
+
+    Write-Host "3/4  Making the network stack start automatically (wpeinit)"
+    $StartNet = Join-Path $Mount "Windows\System32\startnet.cmd"
+    $content = Get-Content $StartNet -Raw
+    if ($content -notmatch "wpeinit") {
+        Add-Content $StartNet "`r`nwpeinit`r`n"
+    }
+} finally {
+    Write-Host "    Unmounting (commit)"
+    Dism /Unmount-Image /MountDir:"$Mount" /commit
+}
+
+Write-Host "4/4  Building the ISO"
+# MakeWinPEMedia.cmd lives directly under the WinPE add-on root
+$MakeWinPEMedia = Join-Path $AdkRoot "Assessment and Deployment Kit\Windows Preinstallation Environment\MakeWinPEMedia.cmd"
+if (-not (Test-Path $MakeWinPEMedia)) { throw "MakeWinPEMedia.cmd not found" }
+& cmd /c """$MakeWinPEMedia"" /ISO ""$WorkDir"" ""$OutIso"""
+if ($LASTEXITCODE -ne 0) { throw "MakeWinPEMedia failed ($LASTEXITCODE)" }
+
+if (-not (Test-Path $OutIso)) { throw "ISO was not created: $OutIso" }
+$size = (Get-Item $OutIso).Length
+Write-Host ("[OK] {0} ({1:N0} MB)" -f $OutIso, ($size / 1MB))
+if ($size -lt 200MB) { throw "ISO looks too small ($([math]::Round($size/1MB)) MB) - something is missing" }
