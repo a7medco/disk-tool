@@ -205,19 +205,30 @@ jobs:
             $log = "$env:RUNNER_TEMP\$label.log"
             $p = Start-Process $exe -ArgumentList "/quiet","/installpath","C:\ADK","/features",$features,"/log",$log -Wait -PassThru
             Write-Host "$label installer exit code: $($p.ExitCode)"
+            if (Test-Path $log) {
+              Write-Host "---- $log (tail) ----"
+              Get-Content $log -Tail 60 | ForEach-Object { Write-Host $_ }
+            } else {
+              Write-Host "(no log file at $log)"
+            }
             if ($p.ExitCode -notin 0, 3010, 1001) {
-              if (Test-Path $log) { Write-Host "---- $log ----"; Get-Content $log | Select-String -Pattern "error|fail" -CaseSensitive:$false | Select-Object -Last 40 }
               throw "$label install failed (exit $($p.ExitCode))"
             }
           }
           Write-Host "---- Deployment Tools / WinPE already registered? ----"
           Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots' -ErrorAction SilentlyContinue |
             Format-List * | Out-String | Write-Host
+          Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall','HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue |
+            Get-ItemProperty -ErrorAction SilentlyContinue |
+            Where-Object { $_.DisplayName -match 'ADK|Deployment|Preinstallation' } |
+            Select-Object DisplayName, DisplayVersion, InstallLocation | Format-Table | Out-String | Write-Host
           Install-Adk C:\adk_installers\adksetup.exe 'OptionId.DeploymentTools' 'ADK'
           Install-Adk C:\adk_installers\adkwinpesetup.exe 'OptionId.WindowsPreinstallationEnvironment' 'WinPE-addon'
-          $found = Get-ChildItem 'C:\' -Filter copype.cmd -Recurse -ErrorAction SilentlyContinue -Depth 6
+          Write-Host "---- Drives ----"
+          Get-PSDrive -PSProvider FileSystem | Format-Table | Out-String | Write-Host
+          $found = Get-ChildItem 'C:\','D:\' -Filter copype.cmd -Recurse -ErrorAction SilentlyContinue -Depth 6
           if (-not $found) {
-            Write-Host "::error::copype.cmd not found anywhere under C:\"
+            Write-Host "::error::copype.cmd not found anywhere under C:\ or D:\"
             throw "WinPE add-on did not install where expected"
           }
           $found | ForEach-Object { Write-Host "Found: $($_.FullName)" }
