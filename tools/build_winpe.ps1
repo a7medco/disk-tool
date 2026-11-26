@@ -90,6 +90,13 @@ try {
     $ccPattern = "amd64_*common-controls_6595b64144ccf1df*"
     $ccDirs = Get-ChildItem "$env:WINDIR\WinSxS" -Directory -Filter $ccPattern -ErrorAction SilentlyContinue
     if (-not $ccDirs) { throw "Common Controls v6 assembly not found under $env:WINDIR\WinSxS - can't fix the SxS error" }
+    # WinSxS itself (and its WinSxS\Manifests subfolder) is TrustedInstaller-owned even in a
+    # DISM-mounted image - Administrators can't create new entries under it without this.
+    foreach ($p in @("Windows\WinSxS", "Windows\WinSxS\Manifests")) {
+        $full = Join-Path $Mount $p
+        takeown /f $full | Out-Null
+        icacls $full /grant "*S-1-5-32-544:(OI)(CI)F" | Out-Null
+    }
     foreach ($dir in $ccDirs) {
         $dst = Join-Path $Mount "Windows\WinSxS\$($dir.Name)"
         if (Test-Path $dst) {
