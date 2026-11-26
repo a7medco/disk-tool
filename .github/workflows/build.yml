@@ -255,9 +255,15 @@ jobs:
       - name: Build the custom WinPE ISO (PowerShell, storage, networking)
         shell: pwsh
         run: |
-          .\tools\build_winpe.ps1 -AdkRoot "$env:ADK_ROOT" -OutIso '.\WinPE_amd64.iso' *>&1 |
-            Tee-Object -FilePath "$env:RUNNER_TEMP\build_winpe.log"
-          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $log = "$env:RUNNER_TEMP\build_winpe.log"
+          try {
+            .\tools\build_winpe.ps1 -AdkRoot "$env:ADK_ROOT" -OutIso '.\WinPE_amd64.iso' *>&1 |
+              Tee-Object -FilePath $log
+          } catch {
+            $_ | Out-String | Add-Content $log
+            Write-Host "::error title=build_winpe.ps1 failed::$($_.Exception.Message)"
+            exit 1
+          }
 
       - name: On failure - publish the build script's output and DISM's own log
         if: failure()
