@@ -15,9 +15,9 @@ import threading
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from core import capture, deploy, guard, health, watch, paths, settings, startup, sysinfo, system, ventoy, winops, yumi   # noqa: E402
+from core import capture, deploy, guard, health, security, watch, paths, settings, startup, sysinfo, system, ventoy, winops, yumi   # noqa: E402
 
-VERSION = "2.10.0"
+VERSION = "2.11.0"
 
 
 class Api:
@@ -279,6 +279,20 @@ class Api:
 
     def startup_set(self, item_id, enable):
         return startup.set_enabled(item_id, enable, self._emit) == 0
+
+    # ---- anti-virus control ----
+    def av_open_settings(self):
+        return security.open_av_settings()
+
+    def av_clear_cache(self):
+        self._bg(lambda: 0 if security.clear_scan_cache(self._emit)[0] else -1)
+        return True
+
+    def av_open_hosts(self):
+        return security.open_hosts_file()
+
+    def av_open_firewall(self):
+        return security.open_firewall()
 
 
 def _user(u):
