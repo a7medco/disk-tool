@@ -15,20 +15,25 @@ param(
 )
 $ErrorActionPreference = "Stop"
 
-$DandI = Join-Path $AdkRoot "Assessment and Deployment Kit\Deployment Tools"
+Write-Host "Using ADK root: $AdkRoot"
 $OCs = Join-Path $AdkRoot "Assessment and Deployment Kit\Windows Preinstallation Environment\amd64\WinPE_OCs"
 $OCsEn = Join-Path $OCs "en-us"
-$CopyPe = Join-Path $DandI "amd64\DandISetEnv.bat"
-if (-not (Test-Path $CopyPe)) { throw "ADK Deployment Tools not found under: $DandI" }
 
 if (Test-Path $WorkDir) { Remove-Item $WorkDir -Recurse -Force }
 
 # copype lives in the ADK's WinPE add-on folder, not in Deployment Tools
 $CopypeCmd = Join-Path $AdkRoot "Assessment and Deployment Kit\Windows Preinstallation Environment\copype.cmd"
-if (-not (Test-Path $CopypeCmd)) { throw "copype.cmd not found - is the WinPE add-on installed?" }
+if (-not (Test-Path $CopypeCmd)) { throw "copype.cmd not found under $AdkRoot - is the WinPE add-on installed?" }
+if (-not (Test-Path $OCs)) { throw "WinPE_OCs folder not found: $OCs" }
+
+# copype reads several env vars (WinPERoot, OSCDImgRoot, ...) that only the ADK's own
+# "Deployment and Imaging Tools Environment" sets up (Microsoft docs: run copype from
+# there). DandISetEnv.bat must run in the SAME cmd session as copype.cmd.
+$DandISetEnv = Join-Path $AdkRoot "Assessment and Deployment Kit\Deployment Tools\DandISetEnv.bat"
+if (-not (Test-Path $DandISetEnv)) { throw "DandISetEnv.bat not found: $DandISetEnv" }
 
 Write-Host "1/4  copype amd64 $WorkDir"
-& cmd /c """$CopypeCmd"" amd64 ""$WorkDir"""
+& cmd /c """$DandISetEnv"" && ""$CopypeCmd"" amd64 ""$WorkDir"""
 if ($LASTEXITCODE -ne 0) { throw "copype failed ($LASTEXITCODE)" }
 
 $Mount = Join-Path $WorkDir "mount"
@@ -78,13 +83,17 @@ try {
 }
 
 Write-Host "4/4  Building the ISO"
-# MakeWinPEMedia.cmd lives directly under the WinPE add-on root
+# MakeWinPEMedia.cmd lives directly under the WinPE add-on root. DandISetEnv.bat (and/or
+# MakeWinPEMedia.cmd itself) can change the current directory, so resolve the output path
+# to an absolute one first - a relative $OutIso would otherwise land somewhere else.
 $MakeWinPEMedia = Join-Path $AdkRoot "Assessment and Deployment Kit\Windows Preinstallation Environment\MakeWinPEMedia.cmd"
 if (-not (Test-Path $MakeWinPEMedia)) { throw "MakeWinPEMedia.cmd not found" }
-& cmd /c """$MakeWinPEMedia"" /ISO ""$WorkDir"" ""$OutIso"""
+$OutIsoAbs = if ([System.IO.Path]::IsPathRooted($OutIso)) { $OutIso } else { Join-Path (Get-Location) $OutIso }
+& cmd /c """$DandISetEnv"" && ""$MakeWinPEMedia"" /ISO ""$WorkDir"" ""$OutIsoAbs"""
 if ($LASTEXITCODE -ne 0) { throw "MakeWinPEMedia failed ($LASTEXITCODE)" }
 
-if (-not (Test-Path $OutIso)) { throw "ISO was not created: $OutIso" }
+if (-not (Test-Path $OutIsoAbs)) { throw "ISO was not created: $OutIsoAbs" }
+$OutIso = $OutIsoAbs
 $size = (Get-Item $OutIso).Length
 Write-Host ("[OK] {0} ({1:N0} MB)" -f $OutIso, ($size / 1MB))
 if ($size -lt 200MB) { throw "ISO looks too small ($([math]::Round($size/1MB)) MB) - something is missing" }

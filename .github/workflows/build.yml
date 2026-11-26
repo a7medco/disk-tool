@@ -200,24 +200,37 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          # 0 = ok, 3010 = reboot needed (fine here), 1001 = this feature is already installed
+          # 0 = ok, 3010 = reboot needed (fine here), 1001 = this feature is already installed.
+          # No /installpath: the runner image already has a "Windows Kits\10" root registered
+          # (from the Windows SDK), and the ADK bootstrapper refuses a different path for it.
           function Install-Adk($exe, $features, $label) {
             $log = "$env:RUNNER_TEMP\$label.log"
-            $p = Start-Process $exe -ArgumentList "/quiet","/installpath","C:\ADK","/features",$features,"/log",$log -Wait -PassThru
+            $p = Start-Process $exe -ArgumentList "/quiet","/features",$features,"/log",$log -Wait -PassThru
             Write-Host "$label installer exit code: $($p.ExitCode)"
+            if (Test-Path $log) {
+              Write-Host "---- $log (tail) ----"
+              Get-Content $log -Tail 60 | ForEach-Object { Write-Host $_ }
+            } else {
+              Write-Host "(no log file at $log)"
+            }
             if ($p.ExitCode -notin 0, 3010, 1001) {
-              if (Test-Path $log) { Write-Host "---- $log ----"; Get-Content $log | Select-String -Pattern "error|fail" -CaseSensitive:$false | Select-Object -Last 40 }
               throw "$label install failed (exit $($p.ExitCode))"
             }
           }
           Write-Host "---- Deployment Tools / WinPE already registered? ----"
           Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots' -ErrorAction SilentlyContinue |
             Format-List * | Out-String | Write-Host
+          Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall','HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue |
+            Get-ItemProperty -ErrorAction SilentlyContinue |
+            Where-Object { $_.DisplayName -match 'ADK|Deployment|Preinstallation' } |
+            Select-Object DisplayName, DisplayVersion, InstallLocation | Format-Table | Out-String | Write-Host
           Install-Adk C:\adk_installers\adksetup.exe 'OptionId.DeploymentTools' 'ADK'
           Install-Adk C:\adk_installers\adkwinpesetup.exe 'OptionId.WindowsPreinstallationEnvironment' 'WinPE-addon'
-          $found = Get-ChildItem 'C:\' -Filter copype.cmd -Recurse -ErrorAction SilentlyContinue -Depth 6
+          Write-Host "---- Drives ----"
+          Get-PSDrive -PSProvider FileSystem | Format-Table | Out-String | Write-Host
+          $found = Get-ChildItem 'C:\','D:\' -Filter copype.cmd -Recurse -ErrorAction SilentlyContinue -Depth 6
           if (-not $found) {
-            Write-Host "::error::copype.cmd not found anywhere under C:\"
+            Write-Host "::error::copype.cmd not found anywhere under C:\ or D:\"
             throw "WinPE add-on did not install where expected"
           }
           $found | ForEach-Object { Write-Host "Found: $($_.FullName)" }
@@ -225,10 +238,44 @@ jobs:
           $adkRoot = $found[0].FullName -replace '\\Assessment and Deployment Kit\\.*$', ''
           Write-Host "ADK root: $adkRoot"
           "ADK_ROOT=$adkRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Get-ChildItem (Join-Path $adkRoot 'Assessment and Deployment Kit\Windows Preinstallation Environment') -Recurse -Depth 2 -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty FullName | Out-File "$env:RUNNER_TEMP\winpe_addon_listing.txt" -Width 300
+
+      - name: On failure - publish the ADK install logs so they can be read without CI access
+        if: failure()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          Compress-Archive -Path "$env:RUNNER_TEMP\ADK.log","$env:RUNNER_TEMP\WinPE-addon.log" -DestinationPath adk-logs.zip -ErrorAction SilentlyContinue
+          if (-not (Test-Path adk-logs.zip)) { "no log files were created" | Out-File adk-logs.zip }
+          gh release delete ci-debug --yes --cleanup-tag 2>$null
+          gh release create ci-debug adk-logs.zip --prerelease --target $env:GITHUB_SHA --title "CI debug logs" --notes "temporary - ADK install debug"
 
       - name: Build the custom WinPE ISO (PowerShell, storage, networking)
         shell: pwsh
-        run: .\tools\build_winpe.ps1 -AdkRoot "$env:ADK_ROOT" -OutIso '.\WinPE_amd64.iso'
+        run: |
+          $log = "$env:RUNNER_TEMP\build_winpe.log"
+          try {
+            .\tools\build_winpe.ps1 -AdkRoot "$env:ADK_ROOT" -OutIso '.\WinPE_amd64.iso' *>&1 |
+              Tee-Object -FilePath $log
+          } catch {
+            $_ | Out-String | Add-Content $log
+            Write-Host "::error title=build_winpe.ps1 failed::$($_.Exception.Message)"
+            exit 1
+          }
+
+      - name: On failure - publish the build script's output and DISM's own log
+        if: failure()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $paths = @("$env:RUNNER_TEMP\build_winpe.log", "$env:RUNNER_TEMP\winpe_addon_listing.txt", "$env:windir\Logs\DISM\dism.log") | Where-Object { Test-Path $_ }
+          if ($paths) { Compress-Archive -Path $paths -DestinationPath dism-log.zip -Force }
+          else { "no logs found" | Out-File dism-log.zip }
+          gh release delete ci-debug --yes --cleanup-tag 2>$null
+          gh release create ci-debug dism-log.zip --prerelease --target $env:GITHUB_SHA --title "CI debug logs" --notes "temporary - WinPE build debug"
 
       - name: Smoke test - mount the ISO and check the optional components landed
         shell: pwsh
