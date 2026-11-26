@@ -200,10 +200,19 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          Start-Process C:\adk_installers\adksetup.exe -ArgumentList '/quiet','/installpath','C:\ADK','/features','OptionId.DeploymentTools' -Wait -PassThru | ForEach-Object {
-            if ($_.ExitCode -ne 0) { throw "ADK install failed, exit $($_.ExitCode)" } }
-          Start-Process C:\adk_installers\adkwinpesetup.exe -ArgumentList '/quiet','/installpath','C:\ADK','/features','OptionId.WindowsPreinstallationEnvironment' -Wait -PassThru | ForEach-Object {
-            if ($_.ExitCode -ne 0) { throw "WinPE add-on install failed, exit $($_.ExitCode)" } }
+          function Install-Adk($exe, $features, $label) {
+            $log = "$env:RUNNER_TEMP\$label.log"
+            $p = Start-Process $exe -ArgumentList "/quiet","/installpath","C:\ADK","/features",$features,"/log",$log -Wait -PassThru
+            if ($p.ExitCode -notin 0, 3010) {
+              Write-Host "::error title=$label install failed::exit code $($p.ExitCode)"
+              if (Test-Path $log) { Get-Content $log -Tail 80 | ForEach-Object { Write-Host $_ } }
+              Get-ChildItem "$env:TEMP" -Filter "Windows Kits*.log" -ErrorAction SilentlyContinue |
+                ForEach-Object { Write-Host "---- $($_.FullName) ----"; Get-Content $_.FullName -Tail 40 }
+              throw "$label install failed (exit $($p.ExitCode))"
+            }
+          }
+          Install-Adk C:\adk_installers\adksetup.exe 'OptionId.DeploymentTools' 'ADK'
+          Install-Adk C:\adk_installers\adkwinpesetup.exe 'OptionId.WindowsPreinstallationEnvironment' 'WinPE-addon'
           Get-ChildItem 'C:\ADK\Assessment and Deployment Kit\Windows Preinstallation Environment\copype.cmd'
 
       - name: Build the custom WinPE ISO (PowerShell, storage, networking)
