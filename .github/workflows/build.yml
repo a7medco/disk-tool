@@ -200,10 +200,12 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          # 0 = ok, 3010 = reboot needed (fine here), 1001 = this feature is already installed
+          # 0 = ok, 3010 = reboot needed (fine here), 1001 = this feature is already installed.
+          # No /installpath: the runner image already has a "Windows Kits\10" root registered
+          # (from the Windows SDK), and the ADK bootstrapper refuses a different path for it.
           function Install-Adk($exe, $features, $label) {
             $log = "$env:RUNNER_TEMP\$label.log"
-            $p = Start-Process $exe -ArgumentList "/quiet","/installpath","C:\ADK","/features",$features,"/log",$log -Wait -PassThru
+            $p = Start-Process $exe -ArgumentList "/quiet","/features",$features,"/log",$log -Wait -PassThru
             Write-Host "$label installer exit code: $($p.ExitCode)"
             if (Test-Path $log) {
               Write-Host "---- $log (tail) ----"
