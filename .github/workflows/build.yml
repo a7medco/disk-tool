@@ -238,6 +238,8 @@ jobs:
           $adkRoot = $found[0].FullName -replace '\\Assessment and Deployment Kit\\.*$', ''
           Write-Host "ADK root: $adkRoot"
           "ADK_ROOT=$adkRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Get-ChildItem (Join-Path $adkRoot 'Assessment and Deployment Kit\Windows Preinstallation Environment') -Recurse -Depth 2 -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty FullName | Out-File "$env:RUNNER_TEMP\winpe_addon_listing.txt" -Width 300
 
       - name: On failure - publish the ADK install logs so they can be read without CI access
         if: failure()
@@ -263,7 +265,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $paths = @("$env:RUNNER_TEMP\build_winpe.log", "$env:windir\Logs\DISM\dism.log") | Where-Object { Test-Path $_ }
+          $paths = @("$env:RUNNER_TEMP\build_winpe.log", "$env:RUNNER_TEMP\winpe_addon_listing.txt", "$env:windir\Logs\DISM\dism.log") | Where-Object { Test-Path $_ }
           if ($paths) { Compress-Archive -Path $paths -DestinationPath dism-log.zip -Force }
           else { "no logs found" | Out-File dism-log.zip }
           gh release delete ci-debug --yes --cleanup-tag 2>$null
