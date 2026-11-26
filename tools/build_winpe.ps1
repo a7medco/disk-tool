@@ -26,8 +26,14 @@ $CopypeCmd = Join-Path $AdkRoot "Assessment and Deployment Kit\Windows Preinstal
 if (-not (Test-Path $CopypeCmd)) { throw "copype.cmd not found under $AdkRoot - is the WinPE add-on installed?" }
 if (-not (Test-Path $OCs)) { throw "WinPE_OCs folder not found: $OCs" }
 
+# copype reads several env vars (WinPERoot, OSCDImgRoot, ...) that only the ADK's own
+# "Deployment and Imaging Tools Environment" sets up (Microsoft docs: run copype from
+# there). DandISetEnv.bat must run in the SAME cmd session as copype.cmd.
+$DandISetEnv = Join-Path $AdkRoot "Assessment and Deployment Kit\Deployment Tools\DandISetEnv.bat"
+if (-not (Test-Path $DandISetEnv)) { throw "DandISetEnv.bat not found: $DandISetEnv" }
+
 Write-Host "1/4  copype amd64 $WorkDir"
-& cmd /c """$CopypeCmd"" amd64 ""$WorkDir"""
+& cmd /c """$DandISetEnv"" && ""$CopypeCmd"" amd64 ""$WorkDir"""
 if ($LASTEXITCODE -ne 0) { throw "copype failed ($LASTEXITCODE)" }
 
 $Mount = Join-Path $WorkDir "mount"
