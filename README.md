@@ -100,3 +100,31 @@ python gui.py
 - **جرّبناها فعلياً** على WinPE حقيقي: فتحت الـ wizard كامل، وعملت Full scan حقيقي شمل الديسكات التانية (مش بس X:).
 - **استخدم "Full scan"، مش "Customized scan".** زرار "Choose Folder..." (اللي بيختار فولدر معيّن) مش شغال في WinPE (محتاج مكوّنات shell إضافية). لكن **"Full scan" بيفحص كل الـ "Local Fixed Disk" تلقائياً من غيره** — جرّبناها وشافت ديسك تاني (C:) وكمّلت تفحص فيه من غير أي تدخّل.
 - يعني لو الفلاشة/الهارد المصاب ظاهر كـ Local Fixed Disk جوه WinPE (أغلب الحالات)، Full scan هيوصله لوحده.
+
+## أدوات محمولة جوه الـ WinPE (Tools\)
+
+كل WinPE ISO فيها فولدر `Tools\` على الـ media نفسها (مش جوه boot.wim، عشان ما تاخدش رامات زيادة). الأدوات دي **نسخ محمولة من توزيعة Sergei Strelec WinPE** (توزيعة طرف تالت مشهورة)، **مش من موقع كل أداة الرسمي** — يعني الرخصة الأصلية لكل أداة لسه سارية (أغلبها freeware)، بس التوزيع ده مش من المطوّر الأصلي مباشرة.
+
+| الفولدر/الملف | الأداة | الاستخدام |
+|---|---|---|
+| `Tools\x64\EasyBCD_*.exe`, `x86\EasyBCD_*.exe` | EasyBCD | تعديل/إصلاح bootloader (BCD) |
+| `Tools\x64\RecoverKeys_x64.exe`, `x86\RecoverKeys_x86.exe` | Recover Keys | استرجاع مفاتيح تفعيل البرامج |
+| `Tools\x64\ShowKeyPlus_x64.exe` | ShowKeyPlus | قراءة مفتاح تفعيل ويندوز من الـ BIOS/الريجستري |
+| `Tools\x64\TotalCommander_x64_Eng.exe`, `x86\TotalCommander_x86_Eng.exe` | Total Commander | file explorer ثنائي اللوحة |
+| `Tools\x86\WinNTSetup_x86.exe` | WinNTSetup | تسطيب ويندوز متقدم (WIM/ESD) |
+| `Tools\AnyDesk_All.exe` | AnyDesk | دعم عن بُعد |
+| `Tools\CrystalDiskInfo_All.exe` | CrystalDiskInfo | حالة SMART للهارد |
+| `Tools\CrystalDiskMark_All.exe` | CrystalDiskMark | قياس سرعة الهارد |
+| `Tools\cpuz_All.exe` | CPU-Z | معلومات المعالج/الرامات |
+| `Tools\Defraggler_All_Eng.exe` | Defraggler | Defragmentation |
+| `Tools\DiskpartGUI_All.exe` | DiskpartGUI | واجهة رسومية لـ diskpart |
+| `Tools\DismPlus_All.exe` | DISM++ | تنظيف وإدارة صور ويندوز |
+| `Tools\DoubleDriver_All.exe` | Double Driver | نسخ احتياطي/استرجاع درايفرات |
+| `Tools\HWiNFO_All.exe` | HWiNFO | معلومات الهاردوير بالتفصيل |
+| `Tools\keyboardtestutility_All.exe` | Keyboard Test Utility | اختبار الكيبورد |
+| `Tools\MonitorTest_All.exe` | MonitorTest | اختبار الشاشة |
+| `Tools\OemKey_All.exe` | OEM Key Tool | قراءة مفتاح الـ OEM |
+| `Tools\SoundCheck_All.exe` | SoundCheck | اختبار الصوت |
+| `Tools\TeraCopy_All.exe` | TeraCopy | نسخ ملفات بإعادة محاولة واستئناف |
+
+ملاحظة: TeraCopy في الأصل بيتكامل مع قائمة الكليك اليمين بتاعة Explorer، ودي مش متاحة في WinPE البسيطة — تشغّله من ملفه مباشرة بدل كده.

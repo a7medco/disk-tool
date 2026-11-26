@@ -12,6 +12,7 @@ param(
     [string]$WorkDir = "$env:RUNNER_TEMP\WinPE_amd64",
     [string]$OutIso = ".\WinPE_amd64.iso",
     [string]$AdkRoot = "${env:ProgramFiles(x86)}\Windows Kits\10",
+    [string]$ToolsSrcDir = (Join-Path (Split-Path $PSScriptRoot -Parent) "bin\tools"),
     [switch]$SkipSafetyScanner
 )
 $ErrorActionPreference = "Stop"
@@ -93,6 +94,16 @@ try {
 } finally {
     Write-Host "    Unmounting (commit)"
     Dism /Unmount-Image /MountDir:"$Mount" /commit
+}
+
+if (Test-Path $ToolsSrcDir) {
+    Write-Host "    Copying portable tools onto the media (not into boot.wim - keeps RAM use low)"
+    $MediaTools = Join-Path $WorkDir "media\Tools"
+    New-Item -ItemType Directory -Force $MediaTools | Out-Null
+    Copy-Item (Join-Path $ToolsSrcDir "*") $MediaTools -Recurse -Force
+    Write-Host ("    {0:N0} MB of tools added" -f ((Get-ChildItem $MediaTools -Recurse -File | Measure-Object Length -Sum).Sum / 1MB))
+} else {
+    Write-Host "    (no bin\tools folder found - skipping portable tools)"
 }
 
 Write-Host "4/4  Building the ISO"

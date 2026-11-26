@@ -306,6 +306,11 @@ jobs:
             } finally {
               Dism /Unmount-Image /MountDir:$mnt /discard
             }
+            $toolsDir = "$($drive):\Tools"
+            if (-not (Test-Path $toolsDir)) { throw "Tools folder not found on the ISO media" }
+            $n = (Get-ChildItem $toolsDir -Recurse -File).Count
+            if ($n -lt 20) { throw "Expected at least 20 portable tools on the media, found $n" }
+            Write-Host "[OK] $n portable tool files on the ISO media (Tools\)"
           } finally {
             Dismount-DiskImage -ImagePath (Resolve-Path .\WinPE_amd64.iso) | Out-Null
           }
