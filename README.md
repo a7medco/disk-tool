@@ -92,3 +92,11 @@ python gui.py
 - أحدث نسخة: https://github.com/a7medco/disk-tool/releases/download/latest/WinPE_amd64.iso
 - حطها في Ventoy وبوت منها زي أي ISO.
 - لسه من غير DiskTool جواها (ده في المرحلة 3). دلوقتي هي WinPE بتاعتنا بس، بديل لـ Windows Setup's WinPE اللي استخدمناه في المرحلة 1.
+
+## Microsoft Safety Scanner في الـ WinPE (تجربة ناجحة)
+
+`msert.exe` (Microsoft Safety Scanner، أداة رسمية مجانية من مايكروسوفت) متحطوطة على كل WinPE ISO بتتبني، بتتنزل fresh في كل build (عشان تنتهي صلاحيتها بعد 10 أيام). مكانها جوه الصورة: `Windows\System32\Tools\msert.exe`.
+
+- **جرّبناها فعلياً** على WinPE حقيقي: فتحت الـ wizard كامل، وعملت Full scan حقيقي شمل الديسكات التانية (مش بس X:).
+- **استخدم "Full scan"، مش "Customized scan".** زرار "Choose Folder..." (اللي بيختار فولدر معيّن) مش شغال في WinPE (محتاج مكوّنات shell إضافية). لكن **"Full scan" بيفحص كل الـ "Local Fixed Disk" تلقائياً من غيره** — جرّبناها وشافت ديسك تاني (C:) وكمّلت تفحص فيه من غير أي تدخّل.
+- يعني لو الفلاشة/الهارد المصاب ظاهر كـ Local Fixed Disk جوه WinPE (أغلب الحالات)، Full scan هيوصله لوحده.
