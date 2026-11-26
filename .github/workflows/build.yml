@@ -237,6 +237,17 @@ jobs:
           Write-Host "ADK root: $adkRoot"
           "ADK_ROOT=$adkRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
+      - name: On failure - publish the ADK install logs so they can be read without CI access
+        if: failure()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          Compress-Archive -Path "$env:RUNNER_TEMP\ADK.log","$env:RUNNER_TEMP\WinPE-addon.log" -DestinationPath adk-logs.zip -ErrorAction SilentlyContinue
+          if (-not (Test-Path adk-logs.zip)) { "no log files were created" | Out-File adk-logs.zip }
+          gh release delete ci-debug --yes --cleanup-tag 2>$null
+          gh release create ci-debug adk-logs.zip --prerelease --target $env:GITHUB_SHA --title "CI debug logs" --notes "temporary - ADK install debug"
+
       - name: Build the custom WinPE ISO (PowerShell, storage, networking)
         shell: pwsh
         run: .\tools\build_winpe.ps1 -AdkRoot "$env:ADK_ROOT" -OutIso '.\WinPE_amd64.iso'
