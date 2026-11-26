@@ -12,7 +12,7 @@ param(
     [string]$WorkDir = "$env:RUNNER_TEMP\WinPE_amd64",
     [string]$OutIso = ".\WinPE_amd64.iso",
     [string]$AdkRoot = "${env:ProgramFiles(x86)}\Windows Kits\10",
-    [string]$ToolsSrcDir = (Join-Path (Split-Path $PSScriptRoot -Parent) "bin\tools"),
+    [string]$ToolsSrcDir = (Join-Path (Split-Path $PSScriptRoot -Parent) "winpe-tools"),
     [switch]$SkipSafetyScanner
 )
 $ErrorActionPreference = "Stop"
