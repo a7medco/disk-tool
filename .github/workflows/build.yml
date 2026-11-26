@@ -200,14 +200,13 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          # 0 = ok, 3010 = reboot needed (fine here), 1001 = this feature is already installed
           function Install-Adk($exe, $features, $label) {
             $log = "$env:RUNNER_TEMP\$label.log"
             $p = Start-Process $exe -ArgumentList "/quiet","/installpath","C:\ADK","/features",$features,"/log",$log -Wait -PassThru
-            if ($p.ExitCode -notin 0, 3010) {
-              Write-Host "::error title=$label install failed::exit code $($p.ExitCode)"
-              if (Test-Path $log) { Get-Content $log -Tail 80 | ForEach-Object { Write-Host $_ } }
-              Get-ChildItem "$env:TEMP" -Filter "Windows Kits*.log" -ErrorAction SilentlyContinue |
-                ForEach-Object { Write-Host "---- $($_.FullName) ----"; Get-Content $_.FullName -Tail 40 }
+            Write-Host "$label installer exit code: $($p.ExitCode)"
+            if ($p.ExitCode -notin 0, 3010, 1001) {
+              if (Test-Path $log) { Write-Host "---- $log ----"; Get-Content $log | Select-String -Pattern "error|fail" -CaseSensitive:$false | Select-Object -Last 40 }
               throw "$label install failed (exit $($p.ExitCode))"
             }
           }
