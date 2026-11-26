@@ -91,10 +91,22 @@ try {
     $ccDirs = Get-ChildItem "$env:WINDIR\WinSxS" -Directory -Filter $ccPattern -ErrorAction SilentlyContinue
     if (-not $ccDirs) { throw "Common Controls v6 assembly not found under $env:WINDIR\WinSxS - can't fix the SxS error" }
     foreach ($dir in $ccDirs) {
-        Copy-Item $dir.FullName (Join-Path $Mount "Windows\WinSxS\$($dir.Name)") -Recurse -Force
+        $dst = Join-Path $Mount "Windows\WinSxS\$($dir.Name)"
+        if (Test-Path $dst) {
+            # WinPE may already ship an older copy, owned by TrustedInstaller - take it over first
+            takeown /f $dst /r /d Y | Out-Null
+            icacls $dst /grant "*S-1-5-32-544:(OI)(CI)F" /t /c | Out-Null
+            Remove-Item $dst -Recurse -Force
+        }
+        Copy-Item $dir.FullName $dst -Recurse -Force
         $manifest = Join-Path "$env:WINDIR\WinSxS\Manifests" "$($dir.Name).manifest"
         if (Test-Path $manifest) {
-            Copy-Item $manifest (Join-Path $Mount "Windows\WinSxS\Manifests\$($dir.Name).manifest") -Force
+            $dstManifest = Join-Path $Mount "Windows\WinSxS\Manifests\$($dir.Name).manifest"
+            if (Test-Path $dstManifest) {
+                takeown /f $dstManifest | Out-Null
+                icacls $dstManifest /grant "*S-1-5-32-544:F" | Out-Null
+            }
+            Copy-Item $manifest $dstManifest -Force
         }
         Write-Host "    + $($dir.Name)"
     }
