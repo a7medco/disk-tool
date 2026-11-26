@@ -15,17 +15,16 @@ param(
 )
 $ErrorActionPreference = "Stop"
 
-$DandI = Join-Path $AdkRoot "Assessment and Deployment Kit\Deployment Tools"
+Write-Host "Using ADK root: $AdkRoot"
 $OCs = Join-Path $AdkRoot "Assessment and Deployment Kit\Windows Preinstallation Environment\amd64\WinPE_OCs"
 $OCsEn = Join-Path $OCs "en-us"
-$CopyPe = Join-Path $DandI "amd64\DandISetEnv.bat"
-if (-not (Test-Path $CopyPe)) { throw "ADK Deployment Tools not found under: $DandI" }
 
 if (Test-Path $WorkDir) { Remove-Item $WorkDir -Recurse -Force }
 
 # copype lives in the ADK's WinPE add-on folder, not in Deployment Tools
 $CopypeCmd = Join-Path $AdkRoot "Assessment and Deployment Kit\Windows Preinstallation Environment\copype.cmd"
-if (-not (Test-Path $CopypeCmd)) { throw "copype.cmd not found - is the WinPE add-on installed?" }
+if (-not (Test-Path $CopypeCmd)) { throw "copype.cmd not found under $AdkRoot - is the WinPE add-on installed?" }
+if (-not (Test-Path $OCs)) { throw "WinPE_OCs folder not found: $OCs" }
 
 Write-Host "1/4  copype amd64 $WorkDir"
 & cmd /c """$CopypeCmd"" amd64 ""$WorkDir"""
