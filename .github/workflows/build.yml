@@ -210,13 +210,25 @@ jobs:
               throw "$label install failed (exit $($p.ExitCode))"
             }
           }
+          Write-Host "---- Deployment Tools / WinPE already registered? ----"
+          Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots' -ErrorAction SilentlyContinue |
+            Format-List * | Out-String | Write-Host
           Install-Adk C:\adk_installers\adksetup.exe 'OptionId.DeploymentTools' 'ADK'
           Install-Adk C:\adk_installers\adkwinpesetup.exe 'OptionId.WindowsPreinstallationEnvironment' 'WinPE-addon'
-          Get-ChildItem 'C:\ADK\Assessment and Deployment Kit\Windows Preinstallation Environment\copype.cmd'
+          $found = Get-ChildItem 'C:\' -Filter copype.cmd -Recurse -ErrorAction SilentlyContinue -Depth 6
+          if (-not $found) {
+            Write-Host "::error::copype.cmd not found anywhere under C:\"
+            throw "WinPE add-on did not install where expected"
+          }
+          $found | ForEach-Object { Write-Host "Found: $($_.FullName)" }
+          # copype.cmd is at <AdkRoot>\Assessment and Deployment Kit\Windows Preinstallation Environment\copype.cmd
+          $adkRoot = $found[0].FullName -replace '\\Assessment and Deployment Kit\\.*$', ''
+          Write-Host "ADK root: $adkRoot"
+          "ADK_ROOT=$adkRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Build the custom WinPE ISO (PowerShell, storage, networking)
         shell: pwsh
-        run: .\tools\build_winpe.ps1 -AdkRoot 'C:\ADK' -OutIso '.\WinPE_amd64.iso'
+        run: .\tools\build_winpe.ps1 -AdkRoot "$env:ADK_ROOT" -OutIso '.\WinPE_amd64.iso'
 
       - name: Smoke test - mount the ISO and check the optional components landed
         shell: pwsh
