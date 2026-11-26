@@ -303,6 +303,9 @@ jobs:
               $msert = Join-Path $mnt 'Windows\System32\Tools\msert.exe'
               if (-not (Test-Path $msert)) { throw "msert.exe (Safety Scanner) not found on the ISO" }
               Write-Host ("[OK] msert.exe present ({0:N0} MB)" -f ((Get-Item $msert).Length / 1MB))
+              $cc = Get-ChildItem (Join-Path $mnt 'Windows\WinSxS') -Directory -Filter 'amd64_*common-controls_6595b64144ccf1df*' -ErrorAction SilentlyContinue
+              if (-not $cc) { throw "Common Controls v6 assembly missing from WinSxS" }
+              Write-Host "[OK] Common Controls v6 present in WinSxS ($($cc.Count) folder(s))"
             } finally {
               Dism /Unmount-Image /MountDir:$mnt /discard
             }

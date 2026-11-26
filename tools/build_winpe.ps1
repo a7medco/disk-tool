@@ -80,6 +80,25 @@ try {
         Add-Content $StartNet "`r`nwpeinit`r`n"
     }
 
+    # Fix: themed GUI apps (TeraCopy, CrystalDiskInfo, HWiNFO, ...) fail in bare WinPE with
+    # "the application has failed to start because its side-by-side configuration is
+    # incorrect" - WinPE's boot.wim doesn't carry the Microsoft.Windows.Common-Controls v6
+    # (comctl32 v6, themed controls) assembly that their manifests ask for. The build
+    # machine's own Windows install always has it; copy it (the real DLL assembly plus its
+    # publisher-policy redirect assembly) into the WinPE image's WinSxS store.
+    Write-Host "    Adding Common Controls v6 to WinSxS (fixes themed GUI tools in WinPE)"
+    $ccPattern = "amd64_*common-controls_6595b64144ccf1df*"
+    $ccDirs = Get-ChildItem "$env:WINDIR\WinSxS" -Directory -Filter $ccPattern -ErrorAction SilentlyContinue
+    if (-not $ccDirs) { throw "Common Controls v6 assembly not found under $env:WINDIR\WinSxS - can't fix the SxS error" }
+    foreach ($dir in $ccDirs) {
+        Copy-Item $dir.FullName (Join-Path $Mount "Windows\WinSxS\$($dir.Name)") -Recurse -Force
+        $manifest = Join-Path "$env:WINDIR\WinSxS\Manifests" "$($dir.Name).manifest"
+        if (Test-Path $manifest) {
+            Copy-Item $manifest (Join-Path $Mount "Windows\WinSxS\Manifests\$($dir.Name).manifest") -Force
+        }
+        Write-Host "    + $($dir.Name)"
+    }
+
     # EXPERIMENT (Phase 3): Microsoft Safety Scanner (msert.exe) - official, free, but
     # Microsoft documents it only for a running Windows install, not WinPE. Downloaded
     # fresh on every build (it expires 10 days after download) so it's always current.
