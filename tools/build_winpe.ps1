@@ -177,7 +177,14 @@ try {
         }
         $dst = Join-Path $Mount "Windows\$rel"
         New-Item -ItemType Directory -Force (Split-Path $dst -Parent) | Out-Null
-        if (Test-Path $dst) { Remove-Item $dst -Recurse -Force }
+        if (Test-Path $dst) {
+            # Deleting WinPE-NetFx's existing (partial) folder outright hit "Access is
+            # denied" on individual files even after takeown/icacls (CI run 46078760099) -
+            # clearing attributes and overwriting file-by-file instead is more forgiving.
+            Get-ChildItem $dst -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {
+                try { $_.Attributes = "Normal" } catch {}
+            }
+        }
         Copy-Item $src $dst -Recurse -Force
         Write-Host ("    + {0} ({1:N0} MB)" -f $rel, ((Get-ChildItem $dst -Recurse -File | Measure-Object Length -Sum).Sum / 1MB))
     }
