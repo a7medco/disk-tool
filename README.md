@@ -126,9 +126,9 @@ python gui.py
 | `Tools\OemKey_All.exe` | OEM Key Tool | قراءة مفتاح الـ OEM |
 | `Tools\SoundCheck_All.exe` | SoundCheck | اختبار الصوت |
 | `Tools\TeraCopy_All.exe` | TeraCopy | نسخ ملفات بإعادة محاولة واستئناف |
-| `Tools\x64\BootSectGui-x64.exe` | BootSectGUI | إصلاح/كتابة boot sector (MBR) — manifest **amd64**، متوقع يشتغل |
-| `Tools\x64\BCDBootGUI-x64.exe` | BCDBootGUI | واجهة رسومية لـ bcdboot (إعادة بناء BCD) — manifest **amd64**، متوقع يشتغل |
-| `Tools\x64\HDDLowLevelFormatTool_x64.exe` | HDD Low Level Format Tool | فورمات منخفض المستوى للهارد/الفلاشة — manifest **amd64**، متوقع يشتغل |
+| `Tools\x64\BootSectGui-x64.exe` | BootSectGUI | إصلاح/كتابة boot sector (MBR) — ✅ جُرِّب فعلياً على WinPE حقيقي، فتح وشغال بالكامل |
+| `Tools\x64\BCDBootGUI-x64.exe` | BCDBootGUI | واجهة رسومية لـ bcdboot (إعادة بناء BCD) — ✅ جُرِّب فعلياً، فتح وشغال بالكامل |
+| `Tools\x64\HDDLowLevelFormatTool_x64.exe` | HDD Low Level Format Tool | فورمات منخفض المستوى للهارد/الفلاشة — ⚠️ بيقبل الترخيص من غير أي SxS error، بس النافذة الرئيسية لسه مبتفتحش في بيئة الاختبار (VM)؛ محتاج تجربة على جهاز حقيقي للتأكيد |
 
 ملاحظة: TeraCopy في الأصل بيتكامل مع قائمة الكليك اليمين بتاعة Explorer، ودي مش متاحة في WinPE البسيطة — تشغّله من ملفه مباشرة بدل كده.
 
