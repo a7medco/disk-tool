@@ -3,6 +3,14 @@ Builds a custom WinPE amd64 ISO using the official Windows ADK + WinPE add-on
 (Microsoft "Create a bootable Windows PE drive" / "copype" docs). Adds the
 optional components needed for PowerShell, basic storage, and networking.
 
+EXPERIMENTAL additions (Phase 3b): a full .NET Framework runtime (fixes .NET
+apps like the real HDD Low Level Format Tool exe, which WinPE-NetFx's partial
+v4.0.30319 folder can't run), plus an auto-login Explorer desktop shell with
+one shortcut per bundled tool, instead of the bare cmd.exe prompt. Neither of
+these is an official, Microsoft-supported WinPE configuration - see the
+comments at each section. Pass -SkipDesktopShell to keep the old cmd.exe-only
+shell if the Explorer shell causes problems.
+
 Must run on Windows with the ADK + WinPE add-on already installed (silent,
 Deployment Tools + WinPE features only). Run from an elevated PowerShell.
 
@@ -13,7 +21,8 @@ param(
     [string]$OutIso = ".\WinPE_amd64.iso",
     [string]$AdkRoot = "${env:ProgramFiles(x86)}\Windows Kits\10",
     [string]$ToolsSrcDir = (Join-Path (Split-Path $PSScriptRoot -Parent) "winpe-tools"),
-    [switch]$SkipSafetyScanner
+    [switch]$SkipSafetyScanner,
+    [switch]$SkipDesktopShell
 )
 $ErrorActionPreference = "Stop"
 
@@ -73,6 +82,27 @@ try {
         }
     }
 
+    # Best-effort: newer/older ADK releases sometimes ship extra .NET-related OCs under
+    # these or similar names (current ADKs only have WinPE-NetFX, already added above -
+    # it provides .NET's own WMI/PowerShell needs but not a full CLR for arbitrary .NET
+    # apps, which the manual CLR copy below actually fixes). Add them if present; skip
+    # quietly if this ADK doesn't have them so the build never fails over an optional cab.
+    foreach ($c in @("WinPE-NetFx4", "WinPE-NetFX45")) {
+        $cab = Join-Path $OCs "$c.cab"
+        if (-not (Test-Path $cab)) {
+            Write-Host "    (optional component $c.cab not present in this ADK - skipping)"
+            continue
+        }
+        Write-Host "    + $c (optional)"
+        Dism /Image:"$Mount" /Add-Package /PackagePath:"$cab"
+        if ($LASTEXITCODE -ne 0) { throw "Add-Package failed for $c" }
+        $cabEn = Join-Path $OCsEn "$c`_en-us.cab"
+        if (Test-Path $cabEn) {
+            Dism /Image:"$Mount" /Add-Package /PackagePath:"$cabEn"
+            if ($LASTEXITCODE -ne 0) { throw "Add-Package failed for $c en-us" }
+        }
+    }
+
     Write-Host "3/4  Making the network stack start automatically (wpeinit)"
     $StartNet = Join-Path $Mount "Windows\System32\startnet.cmd"
     $content = Get-Content $StartNet -Raw
@@ -122,6 +152,36 @@ try {
         Write-Host "    + $($dir.Name)"
     }
 
+    # EXPERIMENT (Phase 3b): full .NET Framework runtime (CLR), not just WinPE-NetFx's
+    # partial one. Boot-testing found WinPE-NetFx's v4.0.30319 folder has only a few
+    # sbscmp*/SharedReg dlls and no clr.dll - any real .NET app (e.g. the HDD Low Level
+    # Format Tool's actual LLFTOOL.exe) launches and exits instantly with no window and
+    # no error. Copy the build machine's own full Framework/Framework64 v4.0.30319
+    # folders over WinPE's partial ones, same "take it from the host OS" approach as the
+    # Common Controls fix above.
+    Write-Host "    Adding full .NET Framework runtime (fixes .NET apps silently failing)"
+    $netDirs = @(
+        "Microsoft.NET\Framework64\v4.0.30319",
+        "Microsoft.NET\Framework\v4.0.30319"
+    )
+    $netRoot = Join-Path $Mount "Windows\Microsoft.NET"
+    if (Test-Path $netRoot) {
+        takeown /f $netRoot /r /d Y | Out-Null
+        icacls $netRoot /grant "*S-1-5-32-544:(OI)(CI)F" /t /c | Out-Null
+    }
+    foreach ($rel in $netDirs) {
+        $src = Join-Path $env:WINDIR $rel
+        if (-not (Test-Path $src)) {
+            Write-Host "    ! $src not found on the build machine - skipping ($rel)"
+            continue
+        }
+        $dst = Join-Path $Mount "Windows\$rel"
+        New-Item -ItemType Directory -Force (Split-Path $dst -Parent) | Out-Null
+        if (Test-Path $dst) { Remove-Item $dst -Recurse -Force }
+        Copy-Item $src $dst -Recurse -Force
+        Write-Host ("    + {0} ({1:N0} MB)" -f $rel, ((Get-ChildItem $dst -Recurse -File | Measure-Object Length -Sum).Sum / 1MB))
+    }
+
     # EXPERIMENT (Phase 3): Microsoft Safety Scanner (msert.exe) - official, free, but
     # Microsoft documents it only for a running Windows install, not WinPE. Downloaded
     # fresh on every build (it expires 10 days after download) so it's always current.
@@ -132,6 +192,42 @@ try {
         New-Item -ItemType Directory -Force $ToolsDir | Out-Null
         Invoke-WebRequest "https://go.microsoft.com/fwlink/?LinkId=212732" -OutFile (Join-Path $ToolsDir "msert.exe")
         Write-Host ("    msert.exe: {0:N0} MB" -f ((Get-Item (Join-Path $ToolsDir "msert.exe")).Length / 1MB))
+    }
+
+    # EXPERIMENT (Phase 3b): auto-login Explorer desktop instead of bare cmd.exe. This is
+    # NOT an official/supported WinPE configuration - WinPE has no real logon or user
+    # profile system, and modern Explorer's Start menu/taskbar search depend on AppX/UWP
+    # packages (ShellExperienceHost, StartMenuExperienceHost) that don't exist in WinPE at
+    # all, so those pieces may not work even though this gets the desktop + icons showing.
+    # Falls back to the old cmd.exe-only shell (by simply not creating winpeshl.ini) if the
+    # build machine itself has no explorer.exe (e.g. a Server Core runner) or -SkipDesktopShell.
+    $ExplorerSrc = Join-Path $env:WINDIR "explorer.exe"
+    if ($SkipDesktopShell) {
+        Write-Host "    -SkipDesktopShell passed - keeping the cmd.exe-only shell"
+    } elseif (-not (Test-Path $ExplorerSrc)) {
+        Write-Host "    ! $ExplorerSrc not found on the build machine - keeping the cmd.exe-only shell"
+    } else {
+        Write-Host "    Adding an auto-login Explorer desktop with shortcuts to the bundled tools"
+        $Sys32 = Join-Path $Mount "Windows\System32"
+        $WinRoot = Join-Path $Mount "Windows"
+        foreach ($p in @($WinRoot, $Sys32)) {
+            takeown /f $p | Out-Null
+            icacls $p /grant "*S-1-5-32-544:(OI)(CI)F" | Out-Null
+        }
+        Copy-Item $ExplorerSrc (Join-Path $WinRoot "explorer.exe") -Force
+        Copy-Item (Join-Path $PSScriptRoot "winpe-desktop-setup.ps1") (Join-Path $Sys32 "winpe-desktop-setup.ps1") -Force
+
+        # winpeshl.ini, if present, REPLACES the default cmd.exe/startnet.cmd auto-start -
+        # so startnet.cmd (which calls wpeinit - network/storage driver init) has to be
+        # called explicitly here as the first step, or it would silently stop running.
+        $WinpeShlIni = @"
+[LaunchApps]
+cmd.exe, /c %SYSTEMDRIVE%\Windows\System32\startnet.cmd
+powershell.exe, -NoProfile -ExecutionPolicy Bypass -File %SYSTEMDRIVE%\Windows\System32\winpe-desktop-setup.ps1
+explorer.exe
+"@
+        Set-Content -Path (Join-Path $Sys32 "winpeshl.ini") -Value $WinpeShlIni -Encoding ascii
+        Write-Host "    + explorer.exe, winpe-desktop-setup.ps1, winpeshl.ini"
     }
 } finally {
     Write-Host "    Unmounting (commit)"
