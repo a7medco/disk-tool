@@ -128,7 +128,7 @@ python gui.py
 | `Tools\TeraCopy_All.exe` | TeraCopy | نسخ ملفات بإعادة محاولة واستئناف |
 | `Tools\x64\BootSectGui-x64.exe` | BootSectGUI | إصلاح/كتابة boot sector (MBR) — ✅ جُرِّب فعلياً على WinPE حقيقي، فتح وشغال بالكامل |
 | `Tools\x64\BCDBootGUI-x64.exe` | BCDBootGUI | واجهة رسومية لـ bcdboot (إعادة بناء BCD) — ✅ جُرِّب فعلياً، فتح وشغال بالكامل |
-| `Tools\x64\HDDLowLevelFormatTool_x64.exe` | HDD Low Level Format Tool | فورمات منخفض المستوى للهارد/الفلاشة — ⚠️ بيقبل الترخيص من غير أي SxS error، بس النافذة الرئيسية لسه مبتفتحش في بيئة الاختبار (VM)؛ محتاج تجربة على جهاز حقيقي للتأكيد |
+| `Tools\x64\HDDLowLevelFormatTool_x64.exe` | HDD Low Level Format Tool | فورمات منخفض المستوى للهارد/الفلاشة — استُبدل الملف بالـ exe الحقيقي (LLFTOOL.exe، 64-bit) بدل غلاف SFX اللي كان بيفتح رخصة وبعدين يقفل من غير نافذة؛ لسه محتاج إعادة اختبار بوت |
 
 ملاحظة: TeraCopy في الأصل بيتكامل مع قائمة الكليك اليمين بتاعة Explorer، ودي مش متاحة في WinPE البسيطة — تشغّله من ملفه مباشرة بدل كده.
 
