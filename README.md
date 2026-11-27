@@ -128,7 +128,7 @@ python gui.py
 | `Tools\TeraCopy_All.exe` | TeraCopy | نسخ ملفات بإعادة محاولة واستئناف |
 | `Tools\x64\BootSectGui-x64.exe` | BootSectGUI | إصلاح/كتابة boot sector (MBR) — ✅ جُرِّب فعلياً على WinPE حقيقي، فتح وشغال بالكامل |
 | `Tools\x64\BCDBootGUI-x64.exe` | BCDBootGUI | واجهة رسومية لـ bcdboot (إعادة بناء BCD) — ✅ جُرِّب فعلياً، فتح وشغال بالكامل |
-| `Tools\x64\HDDLowLevelFormatTool_x64.exe` | HDD Low Level Format Tool | فورمات منخفض المستوى للهارد/الفلاشة — استُبدل الملف بالـ exe الحقيقي (LLFTOOL.exe، 64-bit) بدل غلاف SFX اللي كان بيفتح رخصة وبعدين يقفل من غير نافذة؛ لسه محتاج إعادة اختبار بوت |
+| `Tools\x64\HDDLowLevelFormatTool_x64.exe` | HDD Low Level Format Tool | فورمات منخفض المستوى للهارد/الفلاشة — ❌ جُرِّب فعلياً بالـ exe الحقيقي (LLFTOOL.exe، 64-bit، .NET) بعد استبدال غلاف الـ SFX: بيتنفّذ ويرجع للبرومبت فورًا من غير أي نافذة ومن غير أي خطأ (حتى SxS)؛ الملف يحتاج .NET Framework كامل (CLR) وده مش متوفر في WinPE رغم وجود Microsoft.NET\\Framework64\\v4.0.30319 الجزئي؛ الأداة دي على الأرجح مش هتشتغل في WinPE من غير إضافة مكونات .NET إضافية |
 
 ملاحظة: TeraCopy في الأصل بيتكامل مع قائمة الكليك اليمين بتاعة Explorer، ودي مش متاحة في WinPE البسيطة — تشغّله من ملفه مباشرة بدل كده.
 
