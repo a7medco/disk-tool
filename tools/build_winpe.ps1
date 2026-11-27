@@ -87,8 +87,12 @@ try {
     # machine's own Windows install always has it; copy it (the real DLL assembly plus its
     # publisher-policy redirect assembly) into the WinPE image's WinSxS store.
     Write-Host "    Adding Common Controls v6 to WinSxS (fixes themed GUI tools in WinPE)"
-    $ccPattern = "amd64_*common-controls_6595b64144ccf1df*"
-    $ccDirs = Get-ChildItem "$env:WINDIR\WinSxS" -Directory -Filter $ccPattern -ErrorAction SilentlyContinue
+    # Most of the bundled 32-bit tools' manifests ask for processorArchitecture="X86" even
+    # though WinPE is amd64 - that's the x86_* WinSxS entry (used via WOW64), not amd64_*.
+    # Checked each tool's embedded manifest directly (strings winpe-tools\*.exe): confirmed
+    # most request X86, a couple (built 64-bit) request amd64 - so both must be copied.
+    $ccDirs = Get-ChildItem "$env:WINDIR\WinSxS" -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match '^(amd64|x86)_.*common-controls_6595b64144ccf1df' }
     if (-not $ccDirs) { throw "Common Controls v6 assembly not found under $env:WINDIR\WinSxS - can't fix the SxS error" }
     # WinSxS itself (and its WinSxS\Manifests subfolder) is TrustedInstaller-owned even in a
     # DISM-mounted image - Administrators can't create new entries under it without this.
