@@ -311,7 +311,12 @@ jobs:
               $clr = Join-Path $mnt 'Windows\Microsoft.NET\Framework64\v4.0.30319\clr.dll'
               if (-not (Test-Path $clr)) { throw "Full .NET Framework CLR (clr.dll) missing - the Explorer/CLR experiment regressed" }
               Write-Host "[OK] clr.dll present (full .NET Framework runtime)"
-              foreach ($shellFile in @('Windows\explorer.exe', 'Windows\System32\winpeshl.ini', 'Windows\System32\winpe-desktop-setup.ps1')) {
+              foreach ($canary in @('Windows\zzz-canary-winroot.txt', 'Windows\System32\zzz-canary-sys32.txt')) {
+                $p = Join-Path $mnt $canary
+                if (Test-Path $p) { Write-Host "[OK] canary survived: $canary" }
+                else { Write-Host "[INFO] canary did NOT survive: $canary (confirms direct-root-write theory)" }
+              }
+              foreach ($shellFile in @('Windows\System32\DiskToolShell\explorer.exe', 'Windows\System32\winpeshl.ini', 'Windows\System32\DiskToolShell\winpe-desktop-setup.ps1')) {
                 $p = Join-Path $mnt $shellFile
                 if (-not (Test-Path $p)) { throw "Explorer desktop shell file missing from the FINAL ISO (present at write-time per build_winpe.ps1's own check, so DISM's /commit or MakeWinPEMedia dropped it): $shellFile" }
                 Write-Host "[OK] $shellFile"

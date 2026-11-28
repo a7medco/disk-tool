@@ -69,6 +69,22 @@ $Components = @(
     "WinPE-EnhancedStorage"
 )
 try {
+    # DIAGNOSTIC: five full boot-tests in a row (different ownership handling, CRLF-fixed
+    # winpeshl.ini, running this section first vs last) all found explorer.exe/winpeshl.ini
+    # confirmed present right after writing (Test-Path passes at write-time every time), yet
+    # completely absent from the final booted ISO every single time. The one pattern that
+    # held across every success (WinSxS, the full .NET copy, msert.exe) and every failure
+    # (explorer.exe, winpeshl.ini, winpe-desktop-setup.ps1) is: every file that DOES survive
+    # lives in a SUBFOLDER (new or pre-existing) under Windows\ or Windows\System32\, while
+    # every file that's dropped was written DIRECTLY as an immediate child of Windows\ or
+    # Windows\System32\ themselves. These two canary files test that theory in isolation,
+    # independent of winpeshl.exe's own parsing: the CI smoke-test checks for them in the
+    # final ISO. If they're also missing, direct writes to these two root folders don't
+    # survive DISM's /commit at all (regardless of feature); if they DO survive, the theory
+    # is wrong and the real cause is still unknown.
+    New-Item -ItemType File -Force (Join-Path $Mount "Windows\zzz-canary-winroot.txt") -Value "canary" | Out-Null
+    New-Item -ItemType File -Force (Join-Path $Mount "Windows\System32\zzz-canary-sys32.txt") -Value "canary" | Out-Null
+
     # EXPERIMENT (Phase 3b): auto-login Explorer desktop instead of bare cmd.exe. This is
     # NOT an official/supported WinPE configuration - WinPE has no real logon or user
     # profile system, and modern Explorer's Start menu/taskbar search depend on AppX/UWP
@@ -77,14 +93,11 @@ try {
     # Falls back to the old cmd.exe-only shell (by simply not creating winpeshl.ini) if the
     # build machine itself has no explorer.exe (e.g. a Server Core runner) or -SkipDesktopShell.
     #
-    # Placed FIRST (right after mount, before everything else) as an experiment: every
-    # previous attempt (with/without taking ownership of Windows/System32, with/without
-    # CRLF-fixed winpeshl.ini) had winpeshl.ini/explorer.exe confirmed present right after
-    # writing them, yet absent from the final booted ISO every single time - while this was
-    # the LAST thing done before /Unmount-Image /commit. Every fix that DOES persist (WinSxS,
-    # .NET, msert.exe) runs earlier and/or into an already-tracked subfolder. Testing whether
-    # running this first, with more DISM operations happening afterward before the commit,
-    # makes a difference.
+    # explorer.exe and winpe-desktop-setup.ps1 now go into a dedicated new subfolder
+    # (Windows\System32\DiskToolShell\), matching the msert.exe\Tools pattern that's
+    # consistently survived every build - per the canary-file theory above. winpeshl.ini
+    # itself has no such option: winpeshl.exe hardcodes %SYSTEMROOT%\System32\winpeshl.ini
+    # as its only lookup location, so it must stay at the System32 root regardless.
     $ExplorerSrc = Join-Path $env:WINDIR "explorer.exe"
     if ($SkipDesktopShell) {
         Write-Host "    -SkipDesktopShell passed - keeping the cmd.exe-only shell"
@@ -93,9 +106,10 @@ try {
     } else {
         Write-Host "    Adding an auto-login Explorer desktop with shortcuts to the bundled tools"
         $Sys32 = Join-Path $Mount "Windows\System32"
-        $WinRoot = Join-Path $Mount "Windows"
-        Copy-Item $ExplorerSrc (Join-Path $WinRoot "explorer.exe") -Force
-        Copy-Item (Join-Path $PSScriptRoot "winpe-desktop-setup.ps1") (Join-Path $Sys32 "winpe-desktop-setup.ps1") -Force
+        $ShellDir = Join-Path $Sys32 "DiskToolShell"
+        New-Item -ItemType Directory -Force $ShellDir | Out-Null
+        Copy-Item $ExplorerSrc (Join-Path $ShellDir "explorer.exe") -Force
+        Copy-Item (Join-Path $PSScriptRoot "winpe-desktop-setup.ps1") (Join-Path $ShellDir "winpe-desktop-setup.ps1") -Force
 
         # winpeshl.ini, if present, REPLACES the default cmd.exe/startnet.cmd auto-start -
         # so startnet.cmd (which calls wpeinit - network/storage driver init) has to be
@@ -111,17 +125,17 @@ try {
         $WinpeShlIni = @(
             "[LaunchApps]",
             "cmd.exe, /c %SYSTEMDRIVE%\Windows\System32\startnet.cmd",
-            "powershell.exe, -NoProfile -ExecutionPolicy Bypass -File %SYSTEMDRIVE%\Windows\System32\winpe-desktop-setup.ps1",
-            "explorer.exe"
+            "powershell.exe, -NoProfile -ExecutionPolicy Bypass -File %SYSTEMDRIVE%\Windows\System32\DiskToolShell\winpe-desktop-setup.ps1",
+            "%SYSTEMDRIVE%\Windows\System32\DiskToolShell\explorer.exe"
         ) -join "`r`n"
         $WinpeShlIni += "`r`n"
         Set-Content -Path (Join-Path $Sys32 "winpeshl.ini") -Value $WinpeShlIni -Encoding ascii -NoNewline
-        Write-Host "    + explorer.exe, winpe-desktop-setup.ps1, winpeshl.ini"
+        Write-Host "    + DiskToolShell\explorer.exe, DiskToolShell\winpe-desktop-setup.ps1, winpeshl.ini"
 
-        foreach ($f in @((Join-Path $WinRoot "explorer.exe"), (Join-Path $Sys32 "winpeshl.ini"), (Join-Path $Sys32 "winpe-desktop-setup.ps1"))) {
+        foreach ($f in @((Join-Path $ShellDir "explorer.exe"), (Join-Path $Sys32 "winpeshl.ini"), (Join-Path $ShellDir "winpe-desktop-setup.ps1"))) {
             if (-not (Test-Path $f)) { throw "DEBUG: $f missing immediately after writing it (still mounted) - write itself failed silently" }
         }
-        Write-Host "    [debug] explorer.exe/winpeshl.ini/winpe-desktop-setup.ps1 all confirmed present in the mounted image"
+        Write-Host "    [debug] DiskToolShell\explorer.exe/winpeshl.ini/DiskToolShell\winpe-desktop-setup.ps1 all confirmed present in the mounted image"
     }
 
     foreach ($c in $Components) {
