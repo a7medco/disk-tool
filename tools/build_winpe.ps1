@@ -69,6 +69,61 @@ $Components = @(
     "WinPE-EnhancedStorage"
 )
 try {
+    # EXPERIMENT (Phase 3b): auto-login Explorer desktop instead of bare cmd.exe. This is
+    # NOT an official/supported WinPE configuration - WinPE has no real logon or user
+    # profile system, and modern Explorer's Start menu/taskbar search depend on AppX/UWP
+    # packages (ShellExperienceHost, StartMenuExperienceHost) that don't exist in WinPE at
+    # all, so those pieces may not work even though this gets the desktop + icons showing.
+    # Falls back to the old cmd.exe-only shell (by simply not creating winpeshl.ini) if the
+    # build machine itself has no explorer.exe (e.g. a Server Core runner) or -SkipDesktopShell.
+    #
+    # Placed FIRST (right after mount, before everything else) as an experiment: every
+    # previous attempt (with/without taking ownership of Windows/System32, with/without
+    # CRLF-fixed winpeshl.ini) had winpeshl.ini/explorer.exe confirmed present right after
+    # writing them, yet absent from the final booted ISO every single time - while this was
+    # the LAST thing done before /Unmount-Image /commit. Every fix that DOES persist (WinSxS,
+    # .NET, msert.exe) runs earlier and/or into an already-tracked subfolder. Testing whether
+    # running this first, with more DISM operations happening afterward before the commit,
+    # makes a difference.
+    $ExplorerSrc = Join-Path $env:WINDIR "explorer.exe"
+    if ($SkipDesktopShell) {
+        Write-Host "    -SkipDesktopShell passed - keeping the cmd.exe-only shell"
+    } elseif (-not (Test-Path $ExplorerSrc)) {
+        Write-Host "    ! $ExplorerSrc not found on the build machine - keeping the cmd.exe-only shell"
+    } else {
+        Write-Host "    Adding an auto-login Explorer desktop with shortcuts to the bundled tools"
+        $Sys32 = Join-Path $Mount "Windows\System32"
+        $WinRoot = Join-Path $Mount "Windows"
+        Copy-Item $ExplorerSrc (Join-Path $WinRoot "explorer.exe") -Force
+        Copy-Item (Join-Path $PSScriptRoot "winpe-desktop-setup.ps1") (Join-Path $Sys32 "winpe-desktop-setup.ps1") -Force
+
+        # winpeshl.ini, if present, REPLACES the default cmd.exe/startnet.cmd auto-start -
+        # so startnet.cmd (which calls wpeinit - network/storage driver init) has to be
+        # called explicitly here as the first step, or it would silently stop running.
+        #
+        # winpeshl.exe's own [LaunchApps] parser silently ignores the whole file if its
+        # lines aren't CRLF-terminated - it doesn't error, it just behaves exactly as if
+        # winpeshl.ini didn't exist at all. This script is edited/saved with LF-only line
+        # endings (a Mac editor), so a bare here-string's embedded newlines are LF, not
+        # CRLF. Join the lines with an explicit "`r`n" instead of relying on the source
+        # file's own line endings, so the written winpeshl.ini has real CRLF regardless of
+        # how this .ps1 is saved.
+        $WinpeShlIni = @(
+            "[LaunchApps]",
+            "cmd.exe, /c %SYSTEMDRIVE%\Windows\System32\startnet.cmd",
+            "powershell.exe, -NoProfile -ExecutionPolicy Bypass -File %SYSTEMDRIVE%\Windows\System32\winpe-desktop-setup.ps1",
+            "explorer.exe"
+        ) -join "`r`n"
+        $WinpeShlIni += "`r`n"
+        Set-Content -Path (Join-Path $Sys32 "winpeshl.ini") -Value $WinpeShlIni -Encoding ascii -NoNewline
+        Write-Host "    + explorer.exe, winpe-desktop-setup.ps1, winpeshl.ini"
+
+        foreach ($f in @((Join-Path $WinRoot "explorer.exe"), (Join-Path $Sys32 "winpeshl.ini"), (Join-Path $Sys32 "winpe-desktop-setup.ps1"))) {
+            if (-not (Test-Path $f)) { throw "DEBUG: $f missing immediately after writing it (still mounted) - write itself failed silently" }
+        }
+        Write-Host "    [debug] explorer.exe/winpeshl.ini/winpe-desktop-setup.ps1 all confirmed present in the mounted image"
+    }
+
     foreach ($c in $Components) {
         $cab = Join-Path $OCs "$c.cab"
         if (-not (Test-Path $cab)) { throw "Missing optional component: $cab" }
@@ -201,66 +256,6 @@ try {
         Write-Host ("    msert.exe: {0:N0} MB" -f ((Get-Item (Join-Path $ToolsDir "msert.exe")).Length / 1MB))
     }
 
-    # EXPERIMENT (Phase 3b): auto-login Explorer desktop instead of bare cmd.exe. This is
-    # NOT an official/supported WinPE configuration - WinPE has no real logon or user
-    # profile system, and modern Explorer's Start menu/taskbar search depend on AppX/UWP
-    # packages (ShellExperienceHost, StartMenuExperienceHost) that don't exist in WinPE at
-    # all, so those pieces may not work even though this gets the desktop + icons showing.
-    # Falls back to the old cmd.exe-only shell (by simply not creating winpeshl.ini) if the
-    # build machine itself has no explorer.exe (e.g. a Server Core runner) or -SkipDesktopShell.
-    $ExplorerSrc = Join-Path $env:WINDIR "explorer.exe"
-    if ($SkipDesktopShell) {
-        Write-Host "    -SkipDesktopShell passed - keeping the cmd.exe-only shell"
-    } elseif (-not (Test-Path $ExplorerSrc)) {
-        Write-Host "    ! $ExplorerSrc not found on the build machine - keeping the cmd.exe-only shell"
-    } else {
-        Write-Host "    Adding an auto-login Explorer desktop with shortcuts to the bundled tools"
-        $Sys32 = Join-Path $Mount "Windows\System32"
-        $WinRoot = Join-Path $Mount "Windows"
-        # These are brand-new files (explorer.exe/winpeshl.ini/winpe-desktop-setup.ps1 don't
-        # exist in base WinPE), so no takeown/icacls needed - Administrators can already
-        # create new files under Windows\System32 without taking ownership of anything.
-        # A CI boot-test found that taking ownership of the Windows/System32 folders
-        # THEMSELVES (as opposed to a specific pre-existing subfolder, like the WinSxS and
-        # .NET fixes above do) made DISM's /Unmount-Image /commit silently drop these new
-        # files - the image booted fine but had no winpeshl.ini, explorer.exe, or
-        # winpe-desktop-setup.ps1 at all, falling back to the default cmd.exe shell.
-        Copy-Item $ExplorerSrc (Join-Path $WinRoot "explorer.exe") -Force
-        Copy-Item (Join-Path $PSScriptRoot "winpe-desktop-setup.ps1") (Join-Path $Sys32 "winpe-desktop-setup.ps1") -Force
-
-        # winpeshl.ini, if present, REPLACES the default cmd.exe/startnet.cmd auto-start -
-        # so startnet.cmd (which calls wpeinit - network/storage driver init) has to be
-        # called explicitly here as the first step, or it would silently stop running.
-        #
-        # winpeshl.exe's own [LaunchApps] parser silently ignores the whole file if its
-        # lines aren't CRLF-terminated - it doesn't error, it just behaves exactly as if
-        # winpeshl.ini didn't exist at all (confirmed: two boot-tests found the file
-        # present - Test-Path passed both at write-time and in the CI smoke-test's remount
-        # of the final ISO - yet winpeshl.log still showed the default cmd.exe/startnet.cmd
-        # fallback both times). This script is edited/saved with LF-only line endings (a
-        # Mac editor), so a bare here-string's embedded newlines are LF, not CRLF. Join the
-        # lines with an explicit "`r`n" instead of relying on the source file's own line
-        # endings, so the written winpeshl.ini has real CRLF regardless of how this .ps1 is
-        # saved.
-        $WinpeShlIni = @(
-            "[LaunchApps]",
-            "cmd.exe, /c %SYSTEMDRIVE%\Windows\System32\startnet.cmd",
-            "powershell.exe, -NoProfile -ExecutionPolicy Bypass -File %SYSTEMDRIVE%\Windows\System32\winpe-desktop-setup.ps1",
-            "explorer.exe"
-        ) -join "`r`n"
-        $WinpeShlIni += "`r`n"
-        Set-Content -Path (Join-Path $Sys32 "winpeshl.ini") -Value $WinpeShlIni -Encoding ascii -NoNewline
-        Write-Host "    + explorer.exe, winpe-desktop-setup.ps1, winpeshl.ini"
-
-        # DEBUG (diagnosing files vanishing after DISM commit - two boot-tests in a row
-        # found them missing post-ISO despite no error here): confirm right now, while
-        # still mounted, that the writes actually landed. If this throws, the problem is
-        # at write-time, not at DISM's /commit - narrows down the next fix.
-        foreach ($f in @((Join-Path $WinRoot "explorer.exe"), (Join-Path $Sys32 "winpeshl.ini"), (Join-Path $Sys32 "winpe-desktop-setup.ps1"))) {
-            if (-not (Test-Path $f)) { throw "DEBUG: $f missing immediately after writing it (still mounted) - write itself failed silently" }
-        }
-        Write-Host "    [debug] explorer.exe/winpeshl.ini/winpe-desktop-setup.ps1 all confirmed present in the mounted image"
-    }
 } finally {
     Write-Host "    Unmounting (commit)"
     Dism /Unmount-Image /MountDir:"$Mount" /commit
