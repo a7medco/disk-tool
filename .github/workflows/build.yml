@@ -180,6 +180,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          lfs: true
 
       - name: Cache the ADK + WinPE add-on installers
         uses: actions/cache@v4

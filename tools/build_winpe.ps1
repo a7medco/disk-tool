@@ -217,10 +217,14 @@ try {
         Write-Host "    Adding an auto-login Explorer desktop with shortcuts to the bundled tools"
         $Sys32 = Join-Path $Mount "Windows\System32"
         $WinRoot = Join-Path $Mount "Windows"
-        foreach ($p in @($WinRoot, $Sys32)) {
-            takeown /f $p | Out-Null
-            icacls $p /grant "*S-1-5-32-544:(OI)(CI)F" | Out-Null
-        }
+        # These are brand-new files (explorer.exe/winpeshl.ini/winpe-desktop-setup.ps1 don't
+        # exist in base WinPE), so no takeown/icacls needed - Administrators can already
+        # create new files under Windows\System32 without taking ownership of anything.
+        # A CI boot-test found that taking ownership of the Windows/System32 folders
+        # THEMSELVES (as opposed to a specific pre-existing subfolder, like the WinSxS and
+        # .NET fixes above do) made DISM's /Unmount-Image /commit silently drop these new
+        # files - the image booted fine but had no winpeshl.ini, explorer.exe, or
+        # winpe-desktop-setup.ps1 at all, falling back to the default cmd.exe shell.
         Copy-Item $ExplorerSrc (Join-Path $WinRoot "explorer.exe") -Force
         Copy-Item (Join-Path $PSScriptRoot "winpe-desktop-setup.ps1") (Join-Path $Sys32 "winpe-desktop-setup.ps1") -Force
 
