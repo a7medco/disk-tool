@@ -231,13 +231,25 @@ try {
         # winpeshl.ini, if present, REPLACES the default cmd.exe/startnet.cmd auto-start -
         # so startnet.cmd (which calls wpeinit - network/storage driver init) has to be
         # called explicitly here as the first step, or it would silently stop running.
-        $WinpeShlIni = @"
-[LaunchApps]
-cmd.exe, /c %SYSTEMDRIVE%\Windows\System32\startnet.cmd
-powershell.exe, -NoProfile -ExecutionPolicy Bypass -File %SYSTEMDRIVE%\Windows\System32\winpe-desktop-setup.ps1
-explorer.exe
-"@
-        Set-Content -Path (Join-Path $Sys32 "winpeshl.ini") -Value $WinpeShlIni -Encoding ascii
+        #
+        # winpeshl.exe's own [LaunchApps] parser silently ignores the whole file if its
+        # lines aren't CRLF-terminated - it doesn't error, it just behaves exactly as if
+        # winpeshl.ini didn't exist at all (confirmed: two boot-tests found the file
+        # present - Test-Path passed both at write-time and in the CI smoke-test's remount
+        # of the final ISO - yet winpeshl.log still showed the default cmd.exe/startnet.cmd
+        # fallback both times). This script is edited/saved with LF-only line endings (a
+        # Mac editor), so a bare here-string's embedded newlines are LF, not CRLF. Join the
+        # lines with an explicit "`r`n" instead of relying on the source file's own line
+        # endings, so the written winpeshl.ini has real CRLF regardless of how this .ps1 is
+        # saved.
+        $WinpeShlIni = @(
+            "[LaunchApps]",
+            "cmd.exe, /c %SYSTEMDRIVE%\Windows\System32\startnet.cmd",
+            "powershell.exe, -NoProfile -ExecutionPolicy Bypass -File %SYSTEMDRIVE%\Windows\System32\winpe-desktop-setup.ps1",
+            "explorer.exe"
+        ) -join "`r`n"
+        $WinpeShlIni += "`r`n"
+        Set-Content -Path (Join-Path $Sys32 "winpeshl.ini") -Value $WinpeShlIni -Encoding ascii -NoNewline
         Write-Host "    + explorer.exe, winpe-desktop-setup.ps1, winpeshl.ini"
 
         # DEBUG (diagnosing files vanishing after DISM commit - two boot-tests in a row
