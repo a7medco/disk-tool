@@ -268,25 +268,36 @@ try {
 
 if (Test-Path $ToolsSrcDir) {
     Write-Host "    Copying portable tools onto the media (not into boot.wim - keeps RAM use low)"
-    # DEBUG: two boot-tests in a row found HDDLowLevelFormatTool_x64.exe on the final ISO
+    # DEBUG: three boot-tests in a row found HDDLowLevelFormatTool_x64.exe on the final ISO
     # still at the OLD 41,959,413-byte size, despite the real ~116MB exe being correctly
-    # committed via git-lfs (9047295) and `lfs: true` now set on this job's checkout. Print
-    # the size of the file at the SOURCE (the checked-out repo), before any copy, to see
-    # whether the checkout itself already has the wrong (un-smudged or stale) content.
-    $llfSrc = Join-Path $ToolsSrcDir "x64\HDDLowLevelFormatTool_x64.exe"
-    if (Test-Path $llfSrc) {
-        Write-Host ("    [debug] $llfSrc size at checkout: {0:N0} bytes" -f (Get-Item $llfSrc).Length)
-    } else {
-        Write-Host "    [debug] $llfSrc does not exist at checkout"
+    # committed via git-lfs (9047295), confirmed present in LFS storage via the batch API,
+    # and `lfs: true` set on this job's checkout. A previous diagnostic here (Test-Path AND
+    # undersized) should have thrown if the copied file were wrong, but the build kept
+    # succeeding - so either the path assumption was wrong or something else is going on.
+    # This version always prints full diagnostics (path, size, first bytes as hex - an LFS
+    # pointer file starts with "version https://git-lfs", real PE content starts with "MZ")
+    # for BOTH the source and the copied-to-media file, unconditionally, and unconditionally
+    # throws at the end so this is guaranteed to show up in the ci-debug failure log instead
+    # of depending on a size-comparison that keeps not firing for an unknown reason.
+    function Show-FileDebug($label, $path) {
+        if (-not (Test-Path $path)) { Write-Host "    [debug] $label : $path does not exist"; return }
+        $item = Get-Item $path
+        $bytes = [System.IO.File]::ReadAllBytes($path) | Select-Object -First 40
+        $hex = ($bytes | ForEach-Object { $_.ToString("x2") }) -join " "
+        $ascii = -join ($bytes | ForEach-Object { if ($_ -ge 32 -and $_ -le 126) { [char]$_ } else { "." } })
+        Write-Host ("    [debug] $label : $path - {0:N0} bytes" -f $item.Length)
+        Write-Host "    [debug] $label first 40 bytes (hex): $hex"
+        Write-Host "    [debug] $label first 40 bytes (ascii): $ascii"
     }
+    $llfSrc = Join-Path $ToolsSrcDir "x64\HDDLowLevelFormatTool_x64.exe"
+    Show-FileDebug "SOURCE (checkout)" $llfSrc
     $MediaTools = Join-Path $WorkDir "media\Tools"
     New-Item -ItemType Directory -Force $MediaTools | Out-Null
     Copy-Item (Join-Path $ToolsSrcDir "*") $MediaTools -Recurse -Force
     Write-Host ("    {0:N0} MB of tools added" -f ((Get-ChildItem $MediaTools -Recurse -File | Measure-Object Length -Sum).Sum / 1MB))
     $llfMedia = Join-Path $MediaTools "x64\HDDLowLevelFormatTool_x64.exe"
-    if ((Test-Path $llfMedia) -and (Get-Item $llfMedia).Length -lt 50MB) {
-        throw ("HDDLowLevelFormatTool_x64.exe on the media is only {0:N0} bytes - expected ~116MB (real exe via git-lfs). " -f (Get-Item $llfMedia).Length) + "The checkout likely didn't fetch real LFS content despite lfs: true."
-    }
+    Show-FileDebug "MEDIA (after copy)" $llfMedia
+    throw "DEBUG: intentionally failing every build right now to force the ci-debug log to publish with the [debug] lines above - remove this throw once the HDDLowLevelFormatTool_x64.exe size mystery is solved."
 } else {
     Write-Host "    (no bin\tools folder found - skipping portable tools)"
 }
