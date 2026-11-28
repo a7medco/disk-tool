@@ -308,6 +308,14 @@ jobs:
               $cc = Get-ChildItem (Join-Path $mnt 'Windows\WinSxS') -Directory -Filter 'amd64_*common-controls_6595b64144ccf1df*' -ErrorAction SilentlyContinue
               if (-not $cc) { throw "Common Controls v6 assembly missing from WinSxS" }
               Write-Host "[OK] Common Controls v6 present in WinSxS ($($cc.Count) folder(s))"
+              $clr = Join-Path $mnt 'Windows\Microsoft.NET\Framework64\v4.0.30319\clr.dll'
+              if (-not (Test-Path $clr)) { throw "Full .NET Framework CLR (clr.dll) missing - the Explorer/CLR experiment regressed" }
+              Write-Host "[OK] clr.dll present (full .NET Framework runtime)"
+              foreach ($shellFile in @('Windows\explorer.exe', 'Windows\System32\winpeshl.ini', 'Windows\System32\winpe-desktop-setup.ps1')) {
+                $p = Join-Path $mnt $shellFile
+                if (-not (Test-Path $p)) { throw "Explorer desktop shell file missing from the FINAL ISO (present at write-time per build_winpe.ps1's own check, so DISM's /commit or MakeWinPEMedia dropped it): $shellFile" }
+                Write-Host "[OK] $shellFile"
+              }
             } finally {
               Dism /Unmount-Image /MountDir:$mnt /discard
             }

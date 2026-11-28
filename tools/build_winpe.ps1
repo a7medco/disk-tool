@@ -239,6 +239,15 @@ explorer.exe
 "@
         Set-Content -Path (Join-Path $Sys32 "winpeshl.ini") -Value $WinpeShlIni -Encoding ascii
         Write-Host "    + explorer.exe, winpe-desktop-setup.ps1, winpeshl.ini"
+
+        # DEBUG (diagnosing files vanishing after DISM commit - two boot-tests in a row
+        # found them missing post-ISO despite no error here): confirm right now, while
+        # still mounted, that the writes actually landed. If this throws, the problem is
+        # at write-time, not at DISM's /commit - narrows down the next fix.
+        foreach ($f in @((Join-Path $WinRoot "explorer.exe"), (Join-Path $Sys32 "winpeshl.ini"), (Join-Path $Sys32 "winpe-desktop-setup.ps1"))) {
+            if (-not (Test-Path $f)) { throw "DEBUG: $f missing immediately after writing it (still mounted) - write itself failed silently" }
+        }
+        Write-Host "    [debug] explorer.exe/winpeshl.ini/winpe-desktop-setup.ps1 all confirmed present in the mounted image"
     }
 } finally {
     Write-Host "    Unmounting (commit)"
@@ -247,10 +256,25 @@ explorer.exe
 
 if (Test-Path $ToolsSrcDir) {
     Write-Host "    Copying portable tools onto the media (not into boot.wim - keeps RAM use low)"
+    # DEBUG: two boot-tests in a row found HDDLowLevelFormatTool_x64.exe on the final ISO
+    # still at the OLD 41,959,413-byte size, despite the real ~116MB exe being correctly
+    # committed via git-lfs (9047295) and `lfs: true` now set on this job's checkout. Print
+    # the size of the file at the SOURCE (the checked-out repo), before any copy, to see
+    # whether the checkout itself already has the wrong (un-smudged or stale) content.
+    $llfSrc = Join-Path $ToolsSrcDir "x64\HDDLowLevelFormatTool_x64.exe"
+    if (Test-Path $llfSrc) {
+        Write-Host ("    [debug] $llfSrc size at checkout: {0:N0} bytes" -f (Get-Item $llfSrc).Length)
+    } else {
+        Write-Host "    [debug] $llfSrc does not exist at checkout"
+    }
     $MediaTools = Join-Path $WorkDir "media\Tools"
     New-Item -ItemType Directory -Force $MediaTools | Out-Null
     Copy-Item (Join-Path $ToolsSrcDir "*") $MediaTools -Recurse -Force
     Write-Host ("    {0:N0} MB of tools added" -f ((Get-ChildItem $MediaTools -Recurse -File | Measure-Object Length -Sum).Sum / 1MB))
+    $llfMedia = Join-Path $MediaTools "x64\HDDLowLevelFormatTool_x64.exe"
+    if ((Test-Path $llfMedia) -and (Get-Item $llfMedia).Length -lt 50MB) {
+        throw ("HDDLowLevelFormatTool_x64.exe on the media is only {0:N0} bytes - expected ~116MB (real exe via git-lfs). " -f (Get-Item $llfMedia).Length) + "The checkout likely didn't fetch real LFS content despite lfs: true."
+    }
 } else {
     Write-Host "    (no bin\tools folder found - skipping portable tools)"
 }
